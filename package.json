@@ -1,0 +1,16 @@
+{
+  "name": "vizvasmartcontractdeployer",
+  "version": "1.0.0",
+  "description": "code for deploying smartcontracts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "akshaydevh",
+  "license": "ISC",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^2.0.0",
+    "dotenv": "^11.0.0",
+    "truffle-plugin-verify": "^0.5.20"
+  }
+}
