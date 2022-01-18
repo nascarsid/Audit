@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract VizvaMarket is
+contract VizvaMarket_V1 is
     EIP712Upgradeable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -26,11 +26,11 @@ contract VizvaMarket is
     struct SaleOrder {
         bool isSold;
         bool cancelled;
-        address payable creator;
-        address payable seller;
+        uint8 saleType; //1 for instantSale 2 for Auction
         uint256 askingPrice;
         uint256 id;
-        uint8 saleType; //1 for instantSale 2 for Auction
+        address payable creator;
+        address payable seller;
         TokenData tokenData;
     }
 
@@ -154,11 +154,11 @@ contract VizvaMarket is
             SaleOrder(
                 false,
                 false,
-                payable(_creator),
-                payable(msg.sender),
+                _saleType,
                 _askingPrice,
                 _newItemId,
-                _saleType,
+                payable(_creator),
+                payable(msg.sender),
                 _tokenData
             )
         );
