@@ -73,15 +73,19 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
     );
     const tokenId = newToken.logs[0].args["tokenId"];
-    const vizvaAddress = await VizvaMarketInstance.address;
-    const tokenAddress = await VizvaTokenInstance.address;
+    const vizvaAddress = await MarketProxyInstance.address;
+    const tokenAddress = await Vizva721ProxyInstance.address;
     await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true);
     const marketData = await VizvaMarketInstance.addItemToMarket(
-      accounts[0],
-      tokenAddress,
-      tokenId,
+      1,
       web3.utils.toWei("1", "ether"),
-      10
+      accounts[0],
+      {
+        tokenType: 1,
+        royalty: 10,
+        tokenId: parseInt(tokenId),
+        tokenAddress,
+      }
     );
     assert.strictEqual(0, parseInt(marketData.logs[0].args["id"]));
     assert.strictEqual(2, parseInt(marketData.logs[0].args["tokenId"]));
@@ -97,7 +101,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
   it("should allow token purchase", async () => {
     const Id = 0;
     const tokenId = 2;
-    const tokenAddress = await VizvaTokenInstance.address;
+    const tokenAddress = await Vizva721ProxyInstance.address;
     const marketData = await VizvaMarketInstance.buyItem(
       tokenAddress,
       tokenId,
@@ -125,11 +129,15 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       from: accounts[1],
     });
     const marketData = await VizvaMarketInstance.addItemToMarket(
-      accounts[1],
-      tokenAddress,
-      tokenId,
+      2,
       web3.utils.toWei("1", "ether"),
-      10,
+      accounts[1],
+      {
+        tokenType: 1,
+        royalty: 10,
+        tokenId:parseInt(tokenId),
+        tokenAddress,
+      },
       { from: accounts[1] }
     );
     await WETHInstance.deposit({
@@ -203,18 +211,27 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       { from: accounts[3] }
     );
     const tokenId = newToken.logs[0].args["tokenId"];
-    await VizvaTokenInstance.safeTransferFrom(accounts[3], accounts[4], tokenId, {from: accounts[3]})
+    await VizvaTokenInstance.safeTransferFrom(
+      accounts[3],
+      accounts[4],
+      tokenId,
+      { from: accounts[3] }
+    );
     const vizvaAddress = await MarketProxyInstance.address;
     const tokenAddress = await Vizva721ProxyInstance.address;
     await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
       from: accounts[4],
     });
     const marketData = await VizvaMarketInstance.addItemToMarket(
-      accounts[3],
-      tokenAddress,
-      tokenId,
+      2,
       web3.utils.toWei("1", "ether"),
-      10,
+      accounts[3],
+      {
+        tokenType: 1,
+        royalty: 10,
+        tokenId:parseInt(tokenId),
+        tokenAddress,
+      },
       { from: accounts[4] }
     );
     await WETHInstance.deposit({
@@ -258,9 +275,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const WETHBalanceBuyerAfter = await WETHInstance.balanceOf.call(
       accounts[0]
     );
-    const WETHBalanceCreator = await WETHInstance.balanceOf.call(
-      accounts[3]
-    );
+    const WETHBalanceCreator = await WETHInstance.balanceOf.call(accounts[3]);
     const WETHBalanceWallet = await WETHInstance.balanceOf.call(
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
     );

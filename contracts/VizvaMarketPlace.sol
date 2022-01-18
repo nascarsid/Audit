@@ -28,12 +28,17 @@ contract VizvaMarket is
         bool cancelled;
         address payable creator;
         address payable seller;
-        address tokenAddress;
-        uint256 tokenId;
         uint256 askingPrice;
         uint256 id;
+        uint8 saleType; //1 for instantSale 2 for Auction
+        TokenData tokenData;
+    }
+
+    struct TokenData {
+        uint8 tokenType;  //1 for 721 and 2 for 1155
         uint8 royalty;
-        //uint8 saleType;
+        uint256 tokenId;
+        address tokenAddress;
     }
 
     //Represents bid data
@@ -137,13 +142,13 @@ contract VizvaMarket is
         _;
     }
 
+
     function _addItemToMarket(
-        address _creator,
-        address _tokenAddress,
-        uint256 _tokenId,
+        uint8 _saleType,
         uint256 _askingPrice,
         uint256 _newItemId,
-        uint8 _royalty
+        address _creator,
+        TokenData memory _tokenData
     ) internal virtual {
         itemsForSale.push(
             SaleOrder(
@@ -151,16 +156,15 @@ contract VizvaMarket is
                 false,
                 payable(_creator),
                 payable(msg.sender),
-                _tokenAddress,
-                _tokenId,
                 _askingPrice,
                 _newItemId,
-                _royalty
+                _saleType,
+                _tokenData
             )
         );
-        activeItems[_tokenAddress][_tokenId] = true;
+        activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
         require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
-        emit itemAdded(_newItemId, _tokenId, _askingPrice, _royalty, _tokenAddress, _creator);
+        emit itemAdded(_newItemId, _tokenData.tokenId, _askingPrice, _tokenData.royalty, _tokenData.tokenAddress, _creator);
     }
 
     function withdrawETH(uint256 amount) external virtual onlyOwner {
@@ -173,23 +177,22 @@ contract VizvaMarket is
     }
 
     function addItemToMarket(
-        address creator,
-        address tokenAddress,
-        uint256 tokenId,
+        uint8 saleType,
         uint256 askingPrice,
-        uint8 royalty
+        address creator,
+        TokenData calldata tokenData
     )
         public
-        OnlyItemOwner(tokenAddress, tokenId)
-        HasNFTTransferApproval(tokenAddress, tokenId, msg.sender)
+        OnlyItemOwner(tokenData.tokenAddress, tokenData.tokenId)
+        HasNFTTransferApproval(tokenData.tokenAddress, tokenData.tokenId, msg.sender)
         returns (uint256)
     {
         require(
-            activeItems[tokenAddress][tokenId] == false,
+            activeItems[tokenData.tokenAddress][tokenData.tokenId] == false,
             "Item is already up for sale!"
         );
         uint256 newItemId = itemsForSale.length;
-        _addItemToMarket(creator, tokenAddress, tokenId, askingPrice, newItemId, royalty );
+        _addItemToMarket(saleType, askingPrice, newItemId, creator, tokenData );
         return newItemId;
     }
 
@@ -204,8 +207,8 @@ contract VizvaMarket is
         IsForSale(_id)
         IsCancelled(_id)
         HasNFTTransferApproval(
-            itemsForSale[_id].tokenAddress,
-            itemsForSale[_id].tokenId,
+            itemsForSale[_id].tokenData.tokenAddress,
+            itemsForSale[_id].tokenData.tokenId,
             itemsForSale[_id].seller
         )
         nonReentrant
@@ -213,8 +216,8 @@ contract VizvaMarket is
         
         address seller = itemsForSale[_id].seller;
         {   
-            address tokenAddress = itemsForSale[_id].tokenAddress;
-            uint256 tokenId = itemsForSale[_id].tokenId;
+            address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
+            uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
             require(
             msg.value >= itemsForSale[_id].askingPrice,
             "Not enough funds sent"
@@ -235,7 +238,7 @@ contract VizvaMarket is
             );
         }
         {
-            uint256 royalty = itemsForSale[_id].royalty;
+            uint256 royalty = itemsForSale[_id].tokenData.royalty;
 
             uint256 sellerPercentage = 975 - (royalty * 10);
             uint256 transferValue = (msg.value * sellerPercentage) / 1000;
@@ -253,10 +256,10 @@ contract VizvaMarket is
 
     function finalizeBid(BidVoucher calldata voucher, address _winner) public {
         address signer = _verify(voucher);
-        address tokenAddress = itemsForSale[voucher.marketId].tokenAddress;
+        address tokenAddress = itemsForSale[voucher.marketId].tokenData.tokenAddress;
         address seller = itemsForSale[voucher.marketId].seller;
-        uint256 tokenId = itemsForSale[voucher.marketId].tokenId;
-        uint256 royalty = itemsForSale[voucher.marketId].royalty;
+        uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
+        uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
         // make sure that the signature is valid
         require(signer == _winner, "Signature invalid or unauthorized");
         require(
@@ -311,8 +314,8 @@ contract VizvaMarket is
     }
 
     function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
-        address tokenAddress = itemsForSale[_id].tokenAddress;
-        uint256 tokenId = itemsForSale[_id].tokenId;
+        address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
+        uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
         itemsForSale[_id].cancelled = true;
         activeItems[tokenAddress][tokenId] = false;
         emit saleCancelled(_id);
