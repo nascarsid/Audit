@@ -6,17 +6,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract VizvaToken is ERC721, Pausable, Ownable {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+contract Vizva721 is ERC721Upgradeable, PausableUpgradeable, OwnableUpgradeable {
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    CountersUpgradeable.Counter private _tokenIds;
 
-    constructor() ERC721("VIZVA TOKEN", "VIZVA") {}
-
+    function __VizvaToken_init(string memory _name, string memory _symbol) public initializer {
+        __ERC721_init(_name, _symbol);
+        __Ownable_init_unchained();
+        __Pausable_init_unchained();
+    }
     mapping (uint => string) internal uri;
     
     function pause() public onlyOwner {

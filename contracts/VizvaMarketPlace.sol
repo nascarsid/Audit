@@ -7,24 +7,33 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
+contract VizvaMarket is
+    EIP712Upgradeable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
+{
     //represent details of market item
     struct SaleOrder {
         bool isSold;
         bool cancelled;
+        address payable creator;
         address payable seller;
         address tokenAddress;
         uint256 tokenId;
         uint256 askingPrice;
         uint256 id;
+        uint8 royalty;
+        //uint8 saleType;
     }
 
     //Represents bid data
@@ -43,12 +52,22 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
     // string private constant SIGNING_DOMAIN = "VIZVA_MARKETPLACE";
     // string private constant SIGNATURE_VERSION = "1";
 
-    constructor(
+    function __VizvaMarket_init(
         address _wallet,
         address _wrappedToken,
         string memory SIGNING_DOMAIN,
         string memory SIGNATURE_VERSION
-    ) EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
+    ) public initializer {
+        __EIP712_init(SIGNING_DOMAIN, SIGNATURE_VERSION);
+        __Pausable_init();
+        __Ownable_init_unchained();
+        __VizvaMarket_init_unchained(_wallet, _wrappedToken);
+    }
+
+    function __VizvaMarket_init_unchained(
+        address _wallet,
+        address _wrappedToken
+    ) public initializer {
         WALLET = _wallet;
         WRAPPED_ADDRESS = _wrappedToken;
     }
@@ -59,20 +78,23 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
     event itemAdded(
         uint256 id,
         uint256 tokenId,
+        uint256 askingPrice,
+        uint256 royalty,
         address tokenAddress,
-        uint256 askingPrice
+        address creator
     );
     event itemSold(
         uint256 id,
         address buyer,
         uint256 sellPrice,
-        uint256 tranferAmount
+        uint256 tranferAmount,
+        uint256 royalty
     );
 
     event saleCancelled(uint256 id);
 
     modifier OnlyItemOwner(address tokenAddress, uint256 tokenId) {
-        IERC721 tokenContract = IERC721(tokenAddress);
+        IERC721Upgradeable tokenContract = IERC721Upgradeable(tokenAddress);
         require(
             tokenContract.ownerOf(tokenId) == msg.sender,
             "Only Item owner alowed to list in market"
@@ -85,7 +107,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         uint256 tokenId,
         address sender
     ) {
-        IERC721 tokenContract = IERC721(tokenAddress);
+        IERC721Upgradeable tokenContract = IERC721Upgradeable(tokenAddress);
         require(
             tokenContract.getApproved(tokenId) == address(this) ||
                 tokenContract.isApprovedForAll(sender, address(this)),
@@ -115,6 +137,32 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         _;
     }
 
+    function _addItemToMarket(
+        address _creator,
+        address _tokenAddress,
+        uint256 _tokenId,
+        uint256 _askingPrice,
+        uint256 _newItemId,
+        uint8 _royalty
+    ) internal virtual {
+        itemsForSale.push(
+            SaleOrder(
+                false,
+                false,
+                payable(_creator),
+                payable(msg.sender),
+                _tokenAddress,
+                _tokenId,
+                _askingPrice,
+                _newItemId,
+                _royalty
+            )
+        );
+        activeItems[_tokenAddress][_tokenId] = true;
+        require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
+        emit itemAdded(_newItemId, _tokenId, _askingPrice, _royalty, _tokenAddress, _creator);
+    }
+
     function withdrawETH(uint256 amount) external virtual onlyOwner {
         require(
             address(this).balance <= amount,
@@ -124,22 +172,14 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         require(success, "Value Transfer Failed.");
     }
 
-    function withdrawERC20(uint256 amount) external virtual onlyOwner {
-        IERC20 WRAPPED = IERC20(WRAPPED_ADDRESS);
-        require(
-            WRAPPED.balanceOf(address(this)) >= amount,
-            "Not enough WETH in the winner address"
-        );
-        bool success = WRAPPED.transfer(WALLET, amount);
-        require(success, "ERC20 Transfer Failed.");
-    }
-
     function addItemToMarket(
+        address creator,
         address tokenAddress,
         uint256 tokenId,
-        uint256 askingPrice
+        uint256 askingPrice,
+        uint8 royalty
     )
-        external
+        public
         OnlyItemOwner(tokenAddress, tokenId)
         HasNFTTransferApproval(tokenAddress, tokenId, msg.sender)
         returns (uint256)
@@ -149,21 +189,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
             "Item is already up for sale!"
         );
         uint256 newItemId = itemsForSale.length;
-        itemsForSale.push(
-            SaleOrder(
-                false,
-                false,
-                payable(msg.sender),
-                tokenAddress,
-                tokenId,
-                askingPrice,
-                newItemId
-            )
-        );
-        activeItems[tokenAddress][tokenId] = true;
-
-        require(itemsForSale[newItemId].id == newItemId, "Item id mismatch");
-        emit itemAdded(newItemId, tokenId, tokenAddress, askingPrice);
+        _addItemToMarket(creator, tokenAddress, tokenId, askingPrice, newItemId, royalty );
         return newItemId;
     }
 
@@ -172,7 +198,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         uint256 _tokenId,
         uint256 _id
     )
-        external
+        public
         payable
         ItemExists(_id)
         IsForSale(_id)
@@ -184,28 +210,45 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         )
         nonReentrant
     {
-        address tokenAddress = itemsForSale[_id].tokenAddress;
+        
         address seller = itemsForSale[_id].seller;
-        uint256 tokenId = itemsForSale[_id].tokenId;
-
-        require(
+        {   
+            address tokenAddress = itemsForSale[_id].tokenAddress;
+            uint256 tokenId = itemsForSale[_id].tokenId;
+            require(
             msg.value >= itemsForSale[_id].askingPrice,
             "Not enough funds sent"
-        );
+            );
 
-        require(msg.sender != seller, "seller can't purchase created Item");
+            require(msg.sender != seller, "seller can't purchase created Item");
 
-        require(tokenId == _tokenId, "unexpected tokenId");
+            require(tokenId == _tokenId, "unexpected tokenId");
 
-        require(tokenAddress == _tokenAddress, "unexpected token Address");
+            require(tokenAddress == _tokenAddress, "unexpected token Address");
 
-        itemsForSale[_id].isSold = true;
-        activeItems[tokenAddress][tokenId] = false;
-        IERC721(tokenAddress).safeTransferFrom(seller, msg.sender, tokenId);
-        uint256 transferValue = (msg.value * 975) / 1000;
-        (bool valueSuccess, ) = seller.call{value: transferValue}("");
-        require(valueSuccess, "Value Transfer Failed.");
-        emit itemSold(_id, msg.sender, msg.value, transferValue);
+            itemsForSale[_id].isSold = true;
+            activeItems[tokenAddress][tokenId] = false;
+            IERC721Upgradeable(tokenAddress).safeTransferFrom(
+            seller,
+            msg.sender,
+            tokenId
+            );
+        }
+        {
+            uint256 royalty = itemsForSale[_id].royalty;
+
+            uint256 sellerPercentage = 975 - (royalty * 10);
+            uint256 transferValue = (msg.value * sellerPercentage) / 1000;
+            uint256 royaltyValue = (msg.value * royalty) / 100;
+            (bool valueSuccess, ) = seller.call{value: transferValue}("");
+            require(valueSuccess, "Value Transfer Failed.");
+            (bool royaltySuccess, ) = itemsForSale[_id].creator.call{
+                value: royaltyValue
+            }("");
+            require(royaltySuccess, "royalty transfer failed");
+            emit itemSold(_id, msg.sender, msg.value, transferValue, royaltyValue);
+        }
+        
     }
 
     function finalizeBid(BidVoucher calldata voucher, address _winner) public {
@@ -213,6 +256,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         address tokenAddress = itemsForSale[voucher.marketId].tokenAddress;
         address seller = itemsForSale[voucher.marketId].seller;
         uint256 tokenId = itemsForSale[voucher.marketId].tokenId;
+        uint256 royalty = itemsForSale[voucher.marketId].royalty;
         // make sure that the signature is valid
         require(signer == _winner, "Signature invalid or unauthorized");
         require(
@@ -235,7 +279,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
             "Item sale cancelled"
         );
 
-        IERC20 WRAPPED = IERC20(WRAPPED_ADDRESS);
+        IERC20Upgradeable WRAPPED = IERC20Upgradeable(WRAPPED_ADDRESS);
         require(
             WRAPPED.balanceOf(_winner) >= voucher.bid,
             "Not enough WETH in the winner address"
@@ -243,23 +287,35 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         itemsForSale[voucher.marketId].isSold = true;
 
         activeItems[tokenAddress][tokenId] = false;
-        IERC721(tokenAddress).safeTransferFrom(
+        IERC721Upgradeable(tokenAddress).safeTransferFrom(
             seller,
             _winner,
             tokenId
         );
-        uint256 transferValue = (voucher.bid * 975) / 1000;
+        uint256 sellerPercentage = 975 - (royalty * 10);
+        uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
+        uint256 royaltyValue = (voucher.bid * royalty) / 100;
+        uint256 commission = (voucher.bid * 25) / 1000;
+        WRAPPED.transferFrom(_winner, seller, transferValue);
         WRAPPED.transferFrom(
             _winner,
-            seller,
-            transferValue
+            itemsForSale[voucher.marketId].creator,
+            royaltyValue
         );
-        emit itemSold(voucher.marketId, _winner, voucher.bid, transferValue);
+        WRAPPED.transferFrom(
+            _winner,
+            WALLET,
+            commission
+        );
+        emit itemSold(voucher.marketId, _winner, voucher.bid, transferValue, royaltyValue);
     }
 
-    function cancelSale(uint256 id) public ItemExists(id) IsCancelled(id) {
-        itemsForSale[id].cancelled = true;
-        emit saleCancelled(id);
+    function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
+        address tokenAddress = itemsForSale[_id].tokenAddress;
+        uint256 tokenId = itemsForSale[_id].tokenId;
+        itemsForSale[_id].cancelled = true;
+        activeItems[tokenAddress][tokenId] = false;
+        emit saleCancelled(_id);
     }
 
     function _verify(BidVoucher calldata voucher)
@@ -268,7 +324,7 @@ contract VizvaMarketContract is EIP712, Ownable, ReentrancyGuard {
         returns (address)
     {
         bytes32 digest = _hash(voucher);
-        return ECDSA.recover(digest, voucher.signature);
+        return ECDSAUpgradeable.recover(digest, voucher.signature);
     }
 
     /// @notice Returns a hash of the given BIDVoucher, prepared using EIP712 typed data hashing rules.
