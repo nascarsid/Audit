@@ -1,5 +1,5 @@
 const proxyContract = artifacts.require("VizvaMarketProxy");
-const marketContract = artifacts.require("VizvaMarket");
+const marketContract = artifacts.require("VizvaMarket_V1");
 const adminContract = artifacts.require("VizvaProxyAdmin");
 const WETHContract = artifacts.require("WETH9")
 

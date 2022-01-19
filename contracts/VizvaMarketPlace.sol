@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-/**
- *@dev Contract created for development pupose only.
- * keep on updating as per the requirements.
- */
-
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
@@ -16,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract VizvaMarket is
+contract VizvaMarket_V1 is
     EIP712Upgradeable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -26,16 +21,16 @@ contract VizvaMarket is
     struct SaleOrder {
         bool isSold;
         bool cancelled;
-        address payable creator;
-        address payable seller;
+        uint8 saleType; //1 for instantSale 2 for Auction
         uint256 askingPrice;
         uint256 id;
-        uint8 saleType; //1 for instantSale 2 for Auction
+        address payable creator;
+        address payable seller;
         TokenData tokenData;
     }
 
     struct TokenData {
-        uint8 tokenType;  //1 for 721 and 2 for 1155
+        uint8 tokenType; //1 for 721 and 2 for 1155
         uint8 royalty;
         uint256 tokenId;
         address tokenAddress;
@@ -72,7 +67,7 @@ contract VizvaMarket is
     function __VizvaMarket_init_unchained(
         address _wallet,
         address _wrappedToken
-    ) public initializer {
+    ) internal initializer {
         WALLET = _wallet;
         WRAPPED_ADDRESS = _wrappedToken;
     }
@@ -142,7 +137,6 @@ contract VizvaMarket is
         _;
     }
 
-
     function _addItemToMarket(
         uint8 _saleType,
         uint256 _askingPrice,
@@ -154,17 +148,24 @@ contract VizvaMarket is
             SaleOrder(
                 false,
                 false,
-                payable(_creator),
-                payable(msg.sender),
+                _saleType,
                 _askingPrice,
                 _newItemId,
-                _saleType,
+                payable(_creator),
+                payable(msg.sender),
                 _tokenData
             )
         );
         activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
         require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
-        emit itemAdded(_newItemId, _tokenData.tokenId, _askingPrice, _tokenData.royalty, _tokenData.tokenAddress, _creator);
+        emit itemAdded(
+            _newItemId,
+            _tokenData.tokenId,
+            _askingPrice,
+            _tokenData.royalty,
+            _tokenData.tokenAddress,
+            _creator
+        );
     }
 
     function withdrawETH(uint256 amount) external virtual onlyOwner {
@@ -184,7 +185,12 @@ contract VizvaMarket is
     )
         public
         OnlyItemOwner(tokenData.tokenAddress, tokenData.tokenId)
-        HasNFTTransferApproval(tokenData.tokenAddress, tokenData.tokenId, msg.sender)
+        HasNFTTransferApproval(
+            tokenData.tokenAddress,
+            tokenData.tokenId,
+            msg.sender
+        )
+        whenNotPaused
         returns (uint256)
     {
         require(
@@ -192,7 +198,7 @@ contract VizvaMarket is
             "Item is already up for sale!"
         );
         uint256 newItemId = itemsForSale.length;
-        _addItemToMarket(saleType, askingPrice, newItemId, creator, tokenData );
+        _addItemToMarket(saleType, askingPrice, newItemId, creator, tokenData);
         return newItemId;
     }
 
@@ -203,6 +209,7 @@ contract VizvaMarket is
     )
         public
         payable
+        whenNotPaused
         ItemExists(_id)
         IsForSale(_id)
         IsCancelled(_id)
@@ -213,14 +220,13 @@ contract VizvaMarket is
         )
         nonReentrant
     {
-        
         address seller = itemsForSale[_id].seller;
-        {   
+        {
             address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
             uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
             require(
-            msg.value >= itemsForSale[_id].askingPrice,
-            "Not enough funds sent"
+                msg.value >= itemsForSale[_id].askingPrice,
+                "Not enough funds sent"
             );
 
             require(msg.sender != seller, "seller can't purchase created Item");
@@ -232,9 +238,9 @@ contract VizvaMarket is
             itemsForSale[_id].isSold = true;
             activeItems[tokenAddress][tokenId] = false;
             IERC721Upgradeable(tokenAddress).safeTransferFrom(
-            seller,
-            msg.sender,
-            tokenId
+                seller,
+                msg.sender,
+                tokenId
             );
         }
         {
@@ -249,17 +255,33 @@ contract VizvaMarket is
                 value: royaltyValue
             }("");
             require(royaltySuccess, "royalty transfer failed");
-            emit itemSold(_id, msg.sender, msg.value, transferValue, royaltyValue);
+            emit itemSold(
+                _id,
+                msg.sender,
+                msg.value,
+                transferValue,
+                royaltyValue
+            );
         }
-        
     }
 
-    function finalizeBid(BidVoucher calldata voucher, address _winner) public {
+    function finalizeBid(BidVoucher calldata voucher, address _winner)
+        public
+        whenNotPaused
+        ItemExists(voucher.marketId)
+        IsForSale(voucher.marketId)
+        IsCancelled(voucher.marketId)
+        HasNFTTransferApproval(
+            itemsForSale[voucher.marketId].tokenData.tokenAddress,
+            itemsForSale[voucher.marketId].tokenData.tokenId,
+            itemsForSale[voucher.marketId].seller
+        )
+        nonReentrant
+    {
         address signer = _verify(voucher);
-        address tokenAddress = itemsForSale[voucher.marketId].tokenData.tokenAddress;
         address seller = itemsForSale[voucher.marketId].seller;
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
-        uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
+
         // make sure that the signature is valid
         require(signer == _winner, "Signature invalid or unauthorized");
         require(
@@ -270,47 +292,14 @@ contract VizvaMarket is
 
         require(tokenId == voucher.tokenId, "unexpected tokenId");
 
-        require(
-            tokenAddress == voucher.tokenAddress,
-            "unexpected token Address"
-        );
-
         require(!itemsForSale[voucher.marketId].isSold, "Item already sold");
 
         require(
             !itemsForSale[voucher.marketId].cancelled,
             "Item sale cancelled"
         );
-
-        IERC20Upgradeable WRAPPED = IERC20Upgradeable(WRAPPED_ADDRESS);
-        require(
-            WRAPPED.balanceOf(_winner) >= voucher.bid,
-            "Not enough WETH in the winner address"
-        );
-        itemsForSale[voucher.marketId].isSold = true;
-
-        activeItems[tokenAddress][tokenId] = false;
-        IERC721Upgradeable(tokenAddress).safeTransferFrom(
-            seller,
-            _winner,
-            tokenId
-        );
-        uint256 sellerPercentage = 975 - (royalty * 10);
-        uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
-        uint256 royaltyValue = (voucher.bid * royalty) / 100;
-        uint256 commission = (voucher.bid * 25) / 1000;
-        WRAPPED.transferFrom(_winner, seller, transferValue);
-        WRAPPED.transferFrom(
-            _winner,
-            itemsForSale[voucher.marketId].creator,
-            royaltyValue
-        );
-        WRAPPED.transferFrom(
-            _winner,
-            WALLET,
-            commission
-        );
-        emit itemSold(voucher.marketId, _winner, voucher.bid, transferValue, royaltyValue);
+        _finalizeBid(voucher, _winner, seller);
+        
     }
 
     function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
@@ -319,6 +308,62 @@ contract VizvaMarket is
         itemsForSale[_id].cancelled = true;
         activeItems[tokenAddress][tokenId] = false;
         emit saleCancelled(_id);
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function _finalizeBid(
+        BidVoucher calldata voucher,
+        address _winner,
+        address _seller
+    ) internal {
+        address tokenAddress = itemsForSale[voucher.marketId]
+            .tokenData
+            .tokenAddress;
+        uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
+        uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
+
+        IERC20Upgradeable WRAPPED = IERC20Upgradeable(WRAPPED_ADDRESS);
+        require(
+            WRAPPED.balanceOf(_winner) >= voucher.bid,
+            "Not enough WETH in the winner address"
+        );
+        require(
+            tokenAddress == voucher.tokenAddress,
+            "unexpected token Address"
+        );
+        itemsForSale[voucher.marketId].isSold = true;
+
+        activeItems[tokenAddress][tokenId] = false;
+        IERC721Upgradeable(tokenAddress).safeTransferFrom(
+            _seller,
+            _winner,
+            tokenId
+        );
+        uint256 sellerPercentage = 975 - (royalty * 10);
+        uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
+        uint256 royaltyValue = (voucher.bid * royalty) / 100;
+        uint256 commission = (voucher.bid * 25) / 1000;
+        WRAPPED.transferFrom(_winner, _seller, transferValue);
+        WRAPPED.transferFrom(
+            _winner,
+            itemsForSale[voucher.marketId].creator,
+            royaltyValue
+        );
+        WRAPPED.transferFrom(_winner, WALLET, commission);
+        emit itemSold(
+            voucher.marketId,
+            _winner,
+            voucher.bid,
+            transferValue,
+            royaltyValue
+        );
     }
 
     function _verify(BidVoucher calldata voucher)
