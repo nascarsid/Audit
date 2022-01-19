@@ -29,7 +29,6 @@ contract VizvaMarket_V1 is
         uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction.
         uint256 askingPrice;
         uint256 id;
-        address payable creator;
         address payable seller;
         TokenData tokenData; //contains details of a NFT.
     }
@@ -47,6 +46,7 @@ contract VizvaMarket_V1 is
         uint256 tokenId;
         uint256 amount;
         address tokenAddress;
+        address payable creator;
     }
 
     /**
@@ -195,13 +195,11 @@ contract VizvaMarket_V1 is
     @dev Function to add new Item to market.
     @param saleType - used as an Identifier. saleType = 1 for instant sale and saleType = 2 for auction
     @param askingPrice - minimum price required to buy Item.
-    @param creator - address of the creator of the NFT.
     @param tokenData - contains details of NFT. refer TokenData
      */
     function addItemToMarket(
         uint8 saleType,
         uint256 askingPrice,
-        address creator,
         TokenData calldata tokenData
     )
         public
@@ -219,10 +217,20 @@ contract VizvaMarket_V1 is
             "Item is already up for sale!"
         );
         uint256 newItemId = itemsForSale.length;
-        _addItemToMarket(saleType, askingPrice, newItemId, creator, tokenData);
+        _addItemToMarket(saleType, askingPrice, newItemId, tokenData);
         return newItemId;
     }
-
+/**
+    @dev Function to add new Item to market.
+    @param _tokenAddress - address of the buying NFT. (For cross checking)
+    @param _tokenId - id of the buying NFT.(For cross checking)
+    @param _id - id of the sale.
+    Note -
+        2.5% of the msg.value will be reduced as commission.
+        royalty% of the msg.value will be transfered to NFT creator.
+        The seller will recieve a (100 - 2.5 - royalty)% of the msg.value.
+        All values are multiplied by 10 to avoid precision issue. 
+     */
     function buyItem(
         address _tokenAddress,
         uint256 _tokenId,
@@ -278,7 +286,7 @@ contract VizvaMarket_V1 is
             uint256 royaltyValue = (msg.value * royalty) / 100;
             (bool valueSuccess, ) = seller.call{value: transferValue}("");
             require(valueSuccess, "Value Transfer Failed.");
-            (bool royaltySuccess, ) = itemsForSale[_id].creator.call{
+            (bool royaltySuccess, ) = itemsForSale[_id].tokenData.creator.call{
                 value: royaltyValue
             }("");
             require(royaltySuccess, "royalty transfer failed");
@@ -352,7 +360,6 @@ contract VizvaMarket_V1 is
         uint8 _saleType,
         uint256 _askingPrice,
         uint256 _newItemId,
-        address _creator,
         TokenData memory _tokenData
     ) internal virtual {
         itemsForSale.push(
@@ -362,7 +369,6 @@ contract VizvaMarket_V1 is
                 _saleType,
                 _askingPrice,
                 _newItemId,
-                payable(_creator),
                 payable(msg.sender),
                 _tokenData
             )
@@ -375,7 +381,7 @@ contract VizvaMarket_V1 is
             _askingPrice,
             _tokenData.royalty,
             _tokenData.tokenAddress,
-            _creator
+            _tokenData.creator
         );
     }
 
@@ -413,7 +419,7 @@ contract VizvaMarket_V1 is
         ERC20.transferFrom(_winner, _seller, transferValue);
         ERC20.transferFrom(
             _winner,
-            itemsForSale[voucher.marketId].creator,
+            itemsForSale[voucher.marketId].tokenData.creator,
             royaltyValue
         );
         ERC20.transferFrom(_winner, WALLET, commission);

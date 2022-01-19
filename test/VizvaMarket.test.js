@@ -94,13 +94,13 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const marketData = await VizvaMarketInstance.addItemToMarket(
       1,
       web3.utils.toWei("1", "ether"),
-      accounts[0],
       {
         tokenType: 1,
         royalty: 10,
         tokenId: parseInt(tokenId),
         amount:1,
         tokenAddress,
+        creator: accounts[0],
       }
     );
     assert.strictEqual(0, parseInt(marketData.logs[0].args["id"]));
@@ -147,13 +147,13 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const marketData = await VizvaMarketInstance.addItemToMarket(
       2,
       web3.utils.toWei("1", "ether"),
-      accounts[1],
       {
         tokenType: 1,
         royalty: 10,
         tokenId:parseInt(tokenId),
         amount:1,
         tokenAddress,
+        creator: accounts[1],
       },
       { from: accounts[1] }
     );
@@ -243,13 +243,13 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const marketData = await VizvaMarketInstance.addItemToMarket(
       2,
       web3.utils.toWei("1", "ether"),
-      accounts[3],
       {
         tokenType: 1,
         royalty: 10,
         tokenId:parseInt(tokenId),
         amount:1,
         tokenAddress,
+        creator: accounts[3]
       },
       { from: accounts[4] }
     );
