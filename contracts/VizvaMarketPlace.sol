@@ -65,7 +65,6 @@ contract VizvaMarket_V1 is
     }
 
     address internal WALLET;
-    uint256 public ETHComission;
 
     /**
      * @dev initialize the Marketplace contract.
@@ -220,7 +219,8 @@ contract VizvaMarket_V1 is
         _addItemToMarket(saleType, askingPrice, newItemId, tokenData);
         return newItemId;
     }
-/**
+
+    /**
     @dev Function to add new Item to market.
     @param _tokenAddress - address of the buying NFT. (For cross checking)
     @param _tokenId - id of the buying NFT.(For cross checking)
@@ -299,6 +299,16 @@ contract VizvaMarket_V1 is
         }
     }
 
+    /**
+    @dev function to transfer NFT to auction winner.
+    @param voucher - contains bidding details. EIP712 type.
+    @param _winner - auction winer address. NFT will be transfered to this address.
+    Note -
+        2.5% of the msg.value will be transfered as commission to WALLET.
+        royalty% of the msg.value will be transfered to NFT creator.
+        The seller will recieve a (100 - 2.5 - royalty)% of the msg.value.
+        All values are multiplied by 10 to avoid precision issue. 
+     */
     function finalizeBid(BidVoucher calldata voucher, address _winner)
         public
         whenNotPaused
@@ -340,6 +350,10 @@ contract VizvaMarket_V1 is
         _finalizeBid(voucher, _winner, seller);
     }
 
+    /**
+    @dev Function to cancel an Item from sale. Cancelled Items can't be purchased.
+    @param _id - id the Sale Item. 
+     */
     function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
         address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
         uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
@@ -348,14 +362,36 @@ contract VizvaMarket_V1 is
         emit saleCancelled(_id);
     }
 
+    /**
+     * @dev Pauses the market contract.
+     *
+     * See {ERC20Pausable} and {Pausable-_pause}.
+     *
+     * Requirements:
+     *
+     * - the caller must be the owner of the contract.
+     */
     function pause() public onlyOwner {
         _pause();
     }
 
+    /**
+     * @dev Unpauses the market contract.
+     *
+     * See {ERC20Pausable} and {Pausable-_unpause}.
+     *
+     * Requirements:
+     *
+     * - the caller must be owner of the contract.
+     */
     function unpause() public onlyOwner {
         _unpause();
     }
 
+    /**
+    @dev internal function for adding new item to market
+    * See {addItemToMarket}
+    */
     function _addItemToMarket(
         uint8 _saleType,
         uint256 _askingPrice,
@@ -385,6 +421,10 @@ contract VizvaMarket_V1 is
         );
     }
 
+    /**
+    @dev internal function to transfer NFT to auction winner.
+    * See {finalizeBid}
+    */
     function _finalizeBid(
         BidVoucher calldata voucher,
         address _winner,
@@ -431,6 +471,10 @@ contract VizvaMarket_V1 is
         );
     }
 
+    /**
+    @dev internal function to recover and signed data
+    @param voucher EIP712 signed voucher
+     */
     function _verify(BidVoucher calldata voucher)
         internal
         view
