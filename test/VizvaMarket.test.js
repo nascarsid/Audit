@@ -68,6 +68,22 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(1, parseInt(tokenId));
   });
 
+  it("Vizva721 is Pausable", async () => {
+    let paused = await VizvaTokenInstance.paused.call();
+    assert.strictEqual(false, paused);
+    await VizvaTokenInstance.pause();
+    paused = await VizvaTokenInstance.paused.call();
+    assert.ok(paused);
+  });
+
+  it("Vizva721 is UnPausable", async () => {
+    let paused = await VizvaTokenInstance.paused.call();
+    assert.strictEqual(true, paused);
+    await VizvaTokenInstance.unpause();
+    paused = await VizvaTokenInstance.paused.call();
+    assert.ok(!paused);
+  });
+
   it("should create new token and add it to market", async () => {
     const newToken = await VizvaTokenInstance.createItem(
       "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
