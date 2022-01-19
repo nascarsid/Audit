@@ -19,7 +19,7 @@ contract VizvaMarket_V1 is
 {
     /**
     @dev Struct represent the details of an market order
-    @note 
+    Note: 
         uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction
         TokenData tokenData; //Struct contains the details of a NFT.
      */
@@ -36,7 +36,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Struct represent the details of a NFT.
-    @note 
+    Note:
         uint8 tokenType; // Used as an Identifier; value = 1 for ERC721 Token & 2 for ERC1155 Token.
         uint8 royalty; // percentage of share for creator.
         uint256 amount; // Should be 1 for ERC721 Token.
@@ -51,6 +51,9 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Struct represent the details of Bidvoucher.
+    Note: 
+        address asset; // address of the exchange token
+        address tokenAddress; // address of the NFT contract
      */
     struct BidVoucher {
         address asset;
@@ -64,9 +67,15 @@ contract VizvaMarket_V1 is
     address internal WALLET;
     uint256 public ETHComission;
 
-    // string private constant SIGNING_DOMAIN = "VIZVA_MARKETPLACE";
-    // string private constant SIGNATURE_VERSION = "1";
-
+    /**
+     * @dev initialize the Marketplace contract.
+     * setting msg sender as owner.
+     * @param
+     *  _wallet - address to withdraw MATIC.
+     * SIGNING_DOMAIN {EIP712}
+     * SIGNATURE_VERSION {EIP712}
+     * Note:initializer modifier is used to prevent initialize contract twice.
+     */
     function __VizvaMarket_init(
         address _wallet,
         string memory SIGNING_DOMAIN,
@@ -78,15 +87,19 @@ contract VizvaMarket_V1 is
         __VizvaMarket_init_unchained(_wallet);
     }
 
-    function __VizvaMarket_init_unchained(
-        address _wallet
-    ) internal initializer {
+    function __VizvaMarket_init_unchained(address _wallet)
+        internal
+        initializer
+    {
         WALLET = _wallet;
     }
 
     SaleOrder[] public itemsForSale;
     mapping(address => mapping(uint256 => bool)) activeItems;
 
+    /**
+     * @dev Emitted when new Item added using _addItemToMarket function
+     */
     event itemAdded(
         uint256 id,
         uint256 tokenId,
@@ -95,16 +108,20 @@ contract VizvaMarket_V1 is
         address tokenAddress,
         address creator
     );
-    event itemSold(
-        uint256 id,
-        address buyer,
-        uint256 sellPrice,
-        uint256 tranferAmount,
-        uint256 royalty
-    );
+    /**
+     * @dev Emitted when an Item is sold,`price` contains 3 different values
+     * total value, value recieved by seller, value recieved by creator
+     */
+    event itemSold(uint256 id, address buyer, uint256[3] price, address asset);
 
+    /**
+     * @dev Emitted when an Item Sale cancelled.
+     */
     event saleCancelled(uint256 id);
 
+    /**
+    @dev Modifier to restrict function access only to NFT Owner.
+     */
     modifier OnlyItemOwner(address tokenAddress, uint256 tokenId) {
         IERC721Upgradeable tokenContract = IERC721Upgradeable(tokenAddress);
         require(
@@ -114,6 +131,9 @@ contract VizvaMarket_V1 is
         _;
     }
 
+    /**
+    @dev Modifier to check whether the this contract has transfer approval.
+     */
     modifier HasNFTTransferApproval(
         address tokenAddress,
         uint256 tokenId,
@@ -128,6 +148,9 @@ contract VizvaMarket_V1 is
         _;
     }
 
+    /**
+    @dev Modifier to check whether Item sale exist.
+     */
     modifier ItemExists(uint256 id) {
         require(
             id < itemsForSale.length && itemsForSale[id].id == id,
@@ -136,11 +159,17 @@ contract VizvaMarket_V1 is
         _;
     }
 
+    /**
+    @dev Modifier to check whether `id` exist for sale.
+     */
     modifier IsForSale(uint256 id) {
         require(itemsForSale[id].isSold == false, "Item is already sold!");
         _;
     }
 
+    /**
+    @dev Modifier to check whether `id` sale cancelled or not .
+     */
     modifier IsCancelled(uint256 id) {
         require(
             itemsForSale[id].cancelled == false,
@@ -149,7 +178,11 @@ contract VizvaMarket_V1 is
         _;
     }
 
-    function withdrawETH(uint256 amount) external virtual onlyOwner {
+    /**
+    @dev external function to withdraw MATIC recieved as commission.
+    @param amount - this much token will be transfered to WALLET.
+     */
+    function withdraw(uint256 amount) external virtual onlyOwner {
         require(
             address(this).balance <= amount,
             "amount should be less than avalable balance"
@@ -158,6 +191,13 @@ contract VizvaMarket_V1 is
         require(success, "Value Transfer Failed.");
     }
 
+    /**
+    @dev Function to add new Item to market.
+    @param saleType - used as an Identifier. saleType = 1 for instant sale and saleType = 2 for auction
+    @param askingPrice - minimum price required to buy Item.
+    @param creator - address of the creator of the NFT.
+    @param tokenData - contains details of NFT. refer TokenData
+     */
     function addItemToMarket(
         uint8 saleType,
         uint256 askingPrice,
@@ -245,9 +285,8 @@ contract VizvaMarket_V1 is
             emit itemSold(
                 _id,
                 msg.sender,
-                msg.value,
-                transferValue,
-                royaltyValue
+                [msg.value, transferValue, royaltyValue],
+                address(0)
             );
         }
     }
@@ -351,9 +390,9 @@ contract VizvaMarket_V1 is
         uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
-        IERC20Upgradeable WRAPPED = IERC20Upgradeable(voucher.asset);
+        IERC20Upgradeable ERC20 = IERC20Upgradeable(voucher.asset);
         require(
-            WRAPPED.balanceOf(_winner) >= voucher.bid,
+            ERC20.balanceOf(_winner) >= voucher.bid,
             "Not enough Token Balance in the winner address"
         );
         require(
@@ -361,7 +400,6 @@ contract VizvaMarket_V1 is
             "unexpected token Address"
         );
         itemsForSale[voucher.marketId].isSold = true;
-
         activeItems[tokenAddress][tokenId] = false;
         IERC721Upgradeable(tokenAddress).safeTransferFrom(
             _seller,
@@ -372,19 +410,18 @@ contract VizvaMarket_V1 is
         uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
         uint256 royaltyValue = (voucher.bid * royalty) / 100;
         uint256 commission = (voucher.bid * 25) / 1000;
-        WRAPPED.transferFrom(_winner, _seller, transferValue);
-        WRAPPED.transferFrom(
+        ERC20.transferFrom(_winner, _seller, transferValue);
+        ERC20.transferFrom(
             _winner,
             itemsForSale[voucher.marketId].creator,
             royaltyValue
         );
-        WRAPPED.transferFrom(_winner, WALLET, commission);
+        ERC20.transferFrom(_winner, WALLET, commission);
         emit itemSold(
             voucher.marketId,
             _winner,
-            voucher.bid,
-            transferValue,
-            royaltyValue
+            [voucher.bid, transferValue, royaltyValue],
+            voucher.asset
         );
     }
 
