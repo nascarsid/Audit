@@ -84,6 +84,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         tokenType: 1,
         royalty: 10,
         tokenId: parseInt(tokenId),
+        amount:1,
         tokenAddress,
       }
     );
@@ -136,6 +137,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         tokenType: 1,
         royalty: 10,
         tokenId:parseInt(tokenId),
+        amount:1,
         tokenAddress,
       },
       { from: accounts[1] }
@@ -230,6 +232,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         tokenType: 1,
         royalty: 10,
         tokenId:parseInt(tokenId),
+        amount:1,
         tokenAddress,
       },
       { from: accounts[4] }

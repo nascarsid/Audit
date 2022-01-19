@@ -33,6 +33,7 @@ contract VizvaMarket_V1 is
         uint8 tokenType; //1 for 721 and 2 for 1155
         uint8 royalty;
         uint256 tokenId;
+        uint256 amount;
         address tokenAddress;
     }
 
@@ -137,36 +138,6 @@ contract VizvaMarket_V1 is
         _;
     }
 
-    function _addItemToMarket(
-        uint8 _saleType,
-        uint256 _askingPrice,
-        uint256 _newItemId,
-        address _creator,
-        TokenData memory _tokenData
-    ) internal virtual {
-        itemsForSale.push(
-            SaleOrder(
-                false,
-                false,
-                _saleType,
-                _askingPrice,
-                _newItemId,
-                payable(_creator),
-                payable(msg.sender),
-                _tokenData
-            )
-        );
-        activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
-        require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
-        emit itemAdded(
-            _newItemId,
-            _tokenData.tokenId,
-            _askingPrice,
-            _tokenData.royalty,
-            _tokenData.tokenAddress,
-            _creator
-        );
-    }
 
     function withdrawETH(uint256 amount) external virtual onlyOwner {
         require(
@@ -224,10 +195,13 @@ contract VizvaMarket_V1 is
         {
             address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
             uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
+
             require(
                 msg.value >= itemsForSale[_id].askingPrice,
                 "Not enough funds sent"
             );
+
+            require(itemsForSale[_id].saleType == 1, "can't purachase token on auction");
 
             require(msg.sender != seller, "seller can't purchase created Item");
 
@@ -283,7 +257,9 @@ contract VizvaMarket_V1 is
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
         // make sure that the signature is valid
+        require(itemsForSale[voucher.marketId].saleType == 2, "can't bid token on instant sale");
         require(signer == _winner, "Signature invalid or unauthorized");
+
         require(
             voucher.bid >= itemsForSale[voucher.marketId].askingPrice,
             "bid amount is lesser than min. price"
@@ -316,6 +292,37 @@ contract VizvaMarket_V1 is
 
     function unpause() public onlyOwner {
         _unpause();
+    }
+
+    function _addItemToMarket(
+        uint8 _saleType,
+        uint256 _askingPrice,
+        uint256 _newItemId,
+        address _creator,
+        TokenData memory _tokenData
+    ) internal virtual {
+        itemsForSale.push(
+            SaleOrder(
+                false,
+                false,
+                _saleType,
+                _askingPrice,
+                _newItemId,
+                payable(_creator),
+                payable(msg.sender),
+                _tokenData
+            )
+        );
+        activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
+        require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
+        emit itemAdded(
+            _newItemId,
+            _tokenData.tokenId,
+            _askingPrice,
+            _tokenData.royalty,
+            _tokenData.tokenAddress,
+            _creator
+        );
     }
 
     function _finalizeBid(
