@@ -128,7 +128,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       }
     );
     const owner = await VizvaTokenInstance.ownerOf.call(2);
+    const contractBalance = await web3.eth.getBalance(MarketProxyInstance.address);
     assert.strictEqual(accounts[1], marketData.logs[0].args["buyer"]);
+    assert.strictEqual(contractBalance, web3.utils.toWei("0.025","ether"));
     assert.strictEqual(Id, parseInt(marketData.logs[0].args["id"]));
     assert.strictEqual(accounts[1], owner);
   });
