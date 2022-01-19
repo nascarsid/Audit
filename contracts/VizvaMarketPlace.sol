@@ -17,28 +17,43 @@ contract VizvaMarket_V1 is
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
-    //represent details of market item
+    /**
+    @dev Struct represent the details of an market order
+    @note 
+        uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction
+        TokenData tokenData; //Struct contains the details of a NFT.
+     */
     struct SaleOrder {
         bool isSold;
         bool cancelled;
-        uint8 saleType; //1 for instantSale 2 for Auction
+        uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction.
         uint256 askingPrice;
         uint256 id;
         address payable creator;
         address payable seller;
-        TokenData tokenData;
+        TokenData tokenData; //contains details of a NFT.
     }
 
+    /**
+    @dev Struct represent the details of a NFT.
+    @note 
+        uint8 tokenType; // Used as an Identifier; value = 1 for ERC721 Token & 2 for ERC1155 Token.
+        uint8 royalty; // percentage of share for creator.
+        uint256 amount; // Should be 1 for ERC721 Token.
+     */
     struct TokenData {
-        uint8 tokenType; //1 for 721 and 2 for 1155
+        uint8 tokenType;
         uint8 royalty;
         uint256 tokenId;
         uint256 amount;
         address tokenAddress;
     }
 
-    //Represents bid data
+    /**
+    @dev Struct represent the details of Bidvoucher.
+     */
     struct BidVoucher {
+        address asset;
         address tokenAddress;
         uint256 tokenId;
         uint256 marketId;
@@ -47,7 +62,6 @@ contract VizvaMarket_V1 is
     }
 
     address internal WALLET;
-    address internal WRAPPED_ADDRESS;
     uint256 public ETHComission;
 
     // string private constant SIGNING_DOMAIN = "VIZVA_MARKETPLACE";
@@ -55,22 +69,19 @@ contract VizvaMarket_V1 is
 
     function __VizvaMarket_init(
         address _wallet,
-        address _wrappedToken,
         string memory SIGNING_DOMAIN,
         string memory SIGNATURE_VERSION
     ) public initializer {
         __EIP712_init(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init();
         __Ownable_init_unchained();
-        __VizvaMarket_init_unchained(_wallet, _wrappedToken);
+        __VizvaMarket_init_unchained(_wallet);
     }
 
     function __VizvaMarket_init_unchained(
-        address _wallet,
-        address _wrappedToken
+        address _wallet
     ) internal initializer {
         WALLET = _wallet;
-        WRAPPED_ADDRESS = _wrappedToken;
     }
 
     SaleOrder[] public itemsForSale;
@@ -138,7 +149,6 @@ contract VizvaMarket_V1 is
         _;
     }
 
-
     function withdrawETH(uint256 amount) external virtual onlyOwner {
         require(
             address(this).balance <= amount,
@@ -201,7 +211,10 @@ contract VizvaMarket_V1 is
                 "Not enough funds sent"
             );
 
-            require(itemsForSale[_id].saleType == 1, "can't purachase token on auction");
+            require(
+                itemsForSale[_id].saleType == 1,
+                "can't purachase token on auction"
+            );
 
             require(msg.sender != seller, "seller can't purchase created Item");
 
@@ -257,7 +270,10 @@ contract VizvaMarket_V1 is
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
         // make sure that the signature is valid
-        require(itemsForSale[voucher.marketId].saleType == 2, "can't bid token on instant sale");
+        require(
+            itemsForSale[voucher.marketId].saleType == 2,
+            "can't bid token on instant sale"
+        );
         require(signer == _winner, "Signature invalid or unauthorized");
 
         require(
@@ -275,7 +291,6 @@ contract VizvaMarket_V1 is
             "Item sale cancelled"
         );
         _finalizeBid(voucher, _winner, seller);
-        
     }
 
     function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
@@ -336,10 +351,10 @@ contract VizvaMarket_V1 is
         uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
-        IERC20Upgradeable WRAPPED = IERC20Upgradeable(WRAPPED_ADDRESS);
+        IERC20Upgradeable WRAPPED = IERC20Upgradeable(voucher.asset);
         require(
             WRAPPED.balanceOf(_winner) >= voucher.bid,
-            "Not enough WETH in the winner address"
+            "Not enough Token Balance in the winner address"
         );
         require(
             tokenAddress == voucher.tokenAddress,
@@ -394,8 +409,9 @@ contract VizvaMarket_V1 is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "BidVoucher(address tokenAddress,uint256 tokenId,uint256 marketId,uint256 bid)"
+                            "BidVoucher(address asset,address tokenAddress,uint256 tokenId,uint256 marketId,uint256 bid)"
                         ),
+                        voucher.asset,
                         voucher.tokenAddress,
                         voucher.tokenId,
                         voucher.marketId,

@@ -24,7 +24,6 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     try {
       await VizvaMarketInstance.__VizvaMarket_init(
         "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
-        WETHInstance.address,
         "VIZVA_MARKETPLACE",
         "1"
       );
@@ -185,6 +184,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     });
 
     const voucher = await lazyBidder.createBidVoucher(
+      WETHInstance.address,
       tokenAddress,
       parseInt(tokenId),
       parseInt(marketId),
@@ -280,6 +280,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     });
 
     const voucher = await lazyBidder.createBidVoucher(
+      WETHInstance.address,
       tokenAddress,
       parseInt(tokenId),
       parseInt(marketId),
