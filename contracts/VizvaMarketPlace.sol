@@ -65,6 +65,7 @@ contract VizvaMarket_V1 is
     }
 
     address internal WALLET;
+    uint8 internal commission;
 
     /**
      * @dev initialize the Marketplace contract.
@@ -76,21 +77,23 @@ contract VizvaMarket_V1 is
      * Note:initializer modifier is used to prevent initialize contract twice.
      */
     function __VizvaMarket_init(
+        uint8 _commission,
         address _wallet,
         string memory SIGNING_DOMAIN,
         string memory SIGNATURE_VERSION
-    ) public initializer {
+    ) public initializer virtual {
         __EIP712_init(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init();
         __Ownable_init_unchained();
-        __VizvaMarket_init_unchained(_wallet);
+        __VizvaMarket_init_unchained(_wallet, _commission);
     }
 
-    function __VizvaMarket_init_unchained(address _wallet)
+    function __VizvaMarket_init_unchained(address _wallet, uint8 _commission)
         internal
         initializer
     {
         WALLET = _wallet;
+        commission = _commission;
     }
 
     SaleOrder[] public itemsForSale;
@@ -103,7 +106,7 @@ contract VizvaMarket_V1 is
         uint256 id,
         uint256 tokenId,
         uint256 askingPrice,
-        uint256 royalty,
+        uint8 royalty,
         address tokenAddress,
         address creator
     );
@@ -209,6 +212,7 @@ contract VizvaMarket_V1 is
             msg.sender
         )
         whenNotPaused
+        virtual
         returns (uint256)
     {
         require(
@@ -248,6 +252,7 @@ contract VizvaMarket_V1 is
             itemsForSale[_id].seller
         )
         nonReentrant
+        virtual
     {
         address seller = itemsForSale[_id].seller;
         {
@@ -279,9 +284,8 @@ contract VizvaMarket_V1 is
             );
         }
         {
-            uint256 royalty = itemsForSale[_id].tokenData.royalty;
-
-            uint256 sellerPercentage = 975 - (royalty * 10);
+            uint8 royalty = itemsForSale[_id].tokenData.royalty;
+            uint256 sellerPercentage = 1000 - commission - (royalty * 10);
             uint256 transferValue = (msg.value * sellerPercentage) / 1000;
             uint256 royaltyValue = (msg.value * royalty) / 100;
             (bool valueSuccess, ) = seller.call{value: transferValue}("");
@@ -321,6 +325,7 @@ contract VizvaMarket_V1 is
             itemsForSale[voucher.marketId].seller
         )
         nonReentrant
+        virtual
     {
         address signer = _verify(voucher);
         address seller = itemsForSale[voucher.marketId].seller;
@@ -354,7 +359,7 @@ contract VizvaMarket_V1 is
     @dev Function to cancel an Item from sale. Cancelled Items can't be purchased.
     @param _id - id the Sale Item. 
      */
-    function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) {
+    function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) virtual {
         address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
         uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
         itemsForSale[_id].cancelled = true;
@@ -371,7 +376,7 @@ contract VizvaMarket_V1 is
      *
      * - the caller must be the owner of the contract.
      */
-    function pause() public onlyOwner {
+    function pause() public onlyOwner virtual {
         _pause();
     }
 
@@ -384,7 +389,7 @@ contract VizvaMarket_V1 is
      *
      * - the caller must be owner of the contract.
      */
-    function unpause() public onlyOwner {
+    function unpause() public onlyOwner virtual{
         _unpause();
     }
 
@@ -429,11 +434,11 @@ contract VizvaMarket_V1 is
         BidVoucher calldata voucher,
         address _winner,
         address _seller
-    ) internal {
+    ) internal virtual{
         address tokenAddress = itemsForSale[voucher.marketId]
             .tokenData
             .tokenAddress;
-        uint256 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
+        uint8 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
         IERC20Upgradeable ERC20 = IERC20Upgradeable(voucher.asset);
@@ -452,17 +457,17 @@ contract VizvaMarket_V1 is
             _winner,
             tokenId
         );
-        uint256 sellerPercentage = 975 - (royalty * 10);
+        uint256 sellerPercentage = 1000 - commission - (royalty * 10);
         uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
         uint256 royaltyValue = (voucher.bid * royalty) / 100;
-        uint256 commission = (voucher.bid * 25) / 1000;
+        uint256 commissionValue = (voucher.bid * 25) / 1000;
         ERC20.transferFrom(_winner, _seller, transferValue);
         ERC20.transferFrom(
             _winner,
             itemsForSale[voucher.marketId].tokenData.creator,
             royaltyValue
         );
-        ERC20.transferFrom(_winner, WALLET, commission);
+        ERC20.transferFrom(_winner, WALLET, commissionValue);
         emit itemSold(
             voucher.marketId,
             _winner,
@@ -478,6 +483,7 @@ contract VizvaMarket_V1 is
     function _verify(BidVoucher calldata voucher)
         internal
         view
+        virtual
         returns (address)
     {
         bytes32 digest = _hash(voucher);
@@ -489,6 +495,7 @@ contract VizvaMarket_V1 is
     function _hash(BidVoucher calldata voucher)
         internal
         view
+        virtual
         returns (bytes32)
     {
         return
@@ -511,7 +518,7 @@ contract VizvaMarket_V1 is
     /// @notice Returns the chain id of the current blockchain.
     /// @dev This is used to workaround an issue with ganache returning different values from the on-chain chainid() function and
     ///  the eth_chainId RPC method. See https://github.com/protocol/nft-website/issues/121 for context.
-    function getChainID() external view returns (uint256) {
+    function getChainID() external view virtual returns (uint256) {
         uint256 id;
         assembly {
             id := chainid()

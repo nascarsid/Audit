@@ -23,6 +23,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
   it("Market contract should initialize only once", async () => {
     try {
       await VizvaMarketInstance.__VizvaMarket_init(
+        25,
         "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
         "VIZVA_MARKETPLACE",
         "1"
