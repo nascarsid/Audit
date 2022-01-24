@@ -26,6 +26,9 @@
 
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 require('dotenv').config()
+require("ts-node").register({
+  files: true,
+});
 const testnetMnemonic = process.env.DEVELOPMENT_MNEMONIC
 //const mnemonic = process.env.MNEMONIC
 const infuraRinkeby  = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;

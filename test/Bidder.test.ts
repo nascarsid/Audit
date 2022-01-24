@@ -1,8 +1,21 @@
-const ethers = require("ethers");
-
+import { ethers } from "ethers";
+//const ethers = require("ethers");
 // These constants must match the ones used in the smart contract.
 const SIGNING_DOMAIN_NAME = "VIZVA_MARKETPLACE";
 const SIGNING_DOMAIN_VERSION = "1";
+
+interface domain {
+  name: string,
+  version: string,
+  verifyingContract: string,
+  chainId: ethers.BigNumberish,
+}
+
+interface initializer {
+  contract: ethers.Contract,
+  signer: ethers.Wallet, 
+  chainId: ethers.BigNumberish
+}
 
 /**
  * JSDoc typedefs.
@@ -16,6 +29,12 @@ const SIGNING_DOMAIN_VERSION = "1";
  */
 
 class LazyBidder {
+
+  contract: ethers.Contract;
+  signer: ethers.Wallet;
+  chainId: ethers.BigNumberish;
+  _domain: domain | null;
+  
   /**
    * Create a new LazyBidder targeting a deployed instance of the Vizva Marketplace contract.
    *
@@ -23,10 +42,11 @@ class LazyBidder {
    * @param {ethers.Contract} contract an ethers Contract that's wired up to the deployed contract
    * @param {ethers.Signer} signer a Signer whose account is authorized to mint NFTs on the deployed contract
    */
-  constructor({ contract, signer, chainId }) {
-    this.contract = contract;
-    this.signer = signer;
-    this.chainId = chainId;
+  constructor(initializer:initializer) {
+    this.contract = initializer.contract;
+    this.signer = initializer.signer;
+    this.chainId = initializer.chainId;
+    this._domain = null;
   }
   /**
    * Creates a new BidVoucher object and signs it using this LazyBidder's signing key.
@@ -39,7 +59,8 @@ class LazyBidder {
    *
    * @returns {NFTVoucher}
    */
-  async createBidVoucher(asset, tokenAddress, tokenId, marketId, bid) {
+  
+  async createBidVoucher(asset: string, tokenAddress: string, tokenId: number , marketId: number, bid: ethers.BigNumberish) {
     const voucher = { asset, tokenAddress, tokenId, marketId, bid };
     const domain = await this._signingDomain();
     const types = {
