@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 pragma abicoder v2; // required to accept structs as function parameters
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -24,7 +24,7 @@ contract VizvaLazyNFT_V1 is
     uint16 public commission; 
 
     // address to which withdraw function transfers funds.
-    address WALLET;
+    address public WALLET;
 
     ///Represents an un-minted NFT, which has not yet been recorded into the blockchain. A signed voucher can be redeemed for a real NFT using the redeem function.
     struct NFTVoucher {
