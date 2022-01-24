@@ -8,8 +8,14 @@ const { LazyBidder } = require("./Bidder.test");
 const { ethers } = require("ethers");
 
 const wallets = ethers.Wallet.fromMnemonic(
-  "kite invite rate speed green ladder cup fetch settle write jelly twice"
+  "maple section rate kid degree still notable shaft room skull news lens"
 );
+
+let MarketProxyInstance;
+let Vizva721ProxyInstance;
+let VizvaTokenInstance;
+let VizvaMarketInstance; 
+let WETHInstance;
 
 beforeEach(async () => {
   MarketProxyInstance = await MarketProxyContract.deployed();
@@ -99,7 +105,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         tokenType: 1,
         royalty: 10,
         tokenId: parseInt(tokenId),
-        amount:1,
+        amount: 1,
         tokenAddress,
         creator: accounts[0],
       }
@@ -129,9 +135,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       }
     );
     const owner = await VizvaTokenInstance.ownerOf.call(2);
-    const contractBalance = await web3.eth.getBalance(MarketProxyInstance.address);
+    const contractBalance = await web3.eth.getBalance(
+      MarketProxyInstance.address
+    );
     assert.strictEqual(accounts[1], marketData.logs[0].args["buyer"]);
-    assert.strictEqual(contractBalance, web3.utils.toWei("0.025","ether"));
+    assert.strictEqual(contractBalance, web3.utils.toWei("0.025", "ether"));
     assert.strictEqual(Id, parseInt(marketData.logs[0].args["id"]));
     assert.strictEqual(accounts[1], owner);
   });
@@ -153,8 +161,8 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       {
         tokenType: 1,
         royalty: 10,
-        tokenId:parseInt(tokenId),
-        amount:1,
+        tokenId: parseInt(tokenId),
+        amount: 1,
         tokenAddress,
         creator: accounts[1],
       },
@@ -249,10 +257,10 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       {
         tokenType: 1,
         royalty: 10,
-        tokenId:parseInt(tokenId),
-        amount:1,
+        tokenId: parseInt(tokenId),
+        amount: 1,
         tokenAddress,
-        creator: accounts[3]
+        creator: accounts[3],
       },
       { from: accounts[4] }
     );

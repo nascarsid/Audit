@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -24,48 +24,50 @@ contract VizvaMarket_V1 is
         TokenData tokenData; //Struct contains the details of a NFT.
      */
     struct SaleOrder {
-        bool isSold;
-        bool cancelled;
+        bool isSold; // shows whether the sale is completed or not.
+        bool cancelled; // shows whether the sale is cancelled or not.
         uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction.
-        uint256 askingPrice;
-        uint256 id;
-        address payable seller;
-        TokenData tokenData; //contains details of a NFT.
+        uint256 askingPrice; // the minimum price set by the seller for an NFT.
+        uint256 id; //unique id of the sale
+        address seller; //address of the seller.
+        TokenData tokenData; //struct contains the details of a NFT.
     }
 
     /**
     @dev Struct represent the details of a NFT.
     Note:
-        uint8 tokenType; // Used as an Identifier; value = 1 for ERC721 Token & 2 for ERC1155 Token.
-        uint8 royalty; // percentage of share for creator.
-        uint256 amount; // Should be 1 for ERC721 Token.
+        uint256 amount => Included for the support of ERC1155. Value Should be 1 for ERC721 Token.
      */
     struct TokenData {
-        uint8 tokenType;
-        uint8 royalty;
-        uint256 tokenId;
-        uint256 amount;
-        address tokenAddress;
-        address payable creator;
+        uint8 tokenType; // Used as an Identifier; value = 1 for ERC721 Token & 2 for ERC1155 Token.
+        uint8 royalty; // percentage of share for creator.
+        uint256 tokenId; //id of NFT
+        uint256 amount; //amount of NFT on sale.
+        address tokenAddress; // NFT smartcontract address. 
+        address creator; // address of the creator of the NFT.
     }
 
     /**
     @dev Struct represent the details of Bidvoucher.
-    Note: 
-        address asset; // address of the exchange token
-        address tokenAddress; // address of the NFT contract
      */
     struct BidVoucher {
-        address asset;
-        address tokenAddress;
-        uint256 tokenId;
-        uint256 marketId;
-        uint256 bid;
-        bytes signature;
+        address asset; //address of the token used to exchange NFT.
+        address tokenAddress; //NFT smartcontract address.
+        uint256 tokenId; //id of the token
+        uint256 marketId; //Id of the sale for wich bid placed.
+        uint256 bid; //the bidded amount.
+        bytes signature; //EIP-712 signature by the bidder.
     }
 
+    // address to which withdraw function transfers funds.
     address internal WALLET;
-    uint8 internal commission;
+
+    // Represent the percentage of share, contract recieve as commission on
+    // every NFT sale.
+    uint8 public commission;
+
+    // prevent intialization of logic contract.
+    constructor() initializer {}
 
     /**
      * @dev initialize the Marketplace contract.
@@ -74,14 +76,14 @@ contract VizvaMarket_V1 is
      *  _wallet - address to withdraw MATIC.
      * SIGNING_DOMAIN {EIP712}
      * SIGNATURE_VERSION {EIP712}
-     * Note:initializer modifier is used to prevent initialize contract twice.
+     * Note:initializer modifier is used to prevent initialization of contract twice.
      */
     function __VizvaMarket_init(
         uint8 _commission,
         address _wallet,
         string memory SIGNING_DOMAIN,
         string memory SIGNATURE_VERSION
-    ) public initializer virtual {
+    ) public virtual initializer {
         __EIP712_init(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init();
         __Ownable_init_unchained();
@@ -90,14 +92,14 @@ contract VizvaMarket_V1 is
 
     function __VizvaMarket_init_unchained(address _wallet, uint8 _commission)
         internal
-        initializer
+        onlyInitializing
     {
         WALLET = _wallet;
         commission = _commission;
     }
 
-    SaleOrder[] public itemsForSale;
-    mapping(address => mapping(uint256 => bool)) activeItems;
+    SaleOrder[] public itemsForSale; // contains array of all Items put on sale.
+    mapping(address => mapping(uint256 => bool)) activeItems; // contains all active Items
 
     /**
      * @dev Emitted when new Item added using _addItemToMarket function
@@ -185,10 +187,13 @@ contract VizvaMarket_V1 is
     @param amount - this much token will be transfered to WALLET.
      */
     function withdraw(uint256 amount) external virtual onlyOwner {
+        // checking if amount is less than available balance.
         require(
             address(this).balance <= amount,
             "amount should be less than avalable balance"
         );
+
+        //transfering amount.
         (bool success, ) = WALLET.call{value: amount}("");
         require(success, "Value Transfer Failed.");
     }
@@ -197,7 +202,7 @@ contract VizvaMarket_V1 is
     @dev Function to add new Item to market.
     @param saleType - used as an Identifier. saleType = 1 for instant sale and saleType = 2 for auction
     @param askingPrice - minimum price required to buy Item.
-    @param tokenData - contains details of NFT. refer TokenData
+    @param tokenData - contains details of NFT. refer struct TokenData
      */
     function addItemToMarket(
         uint8 saleType,
@@ -205,6 +210,7 @@ contract VizvaMarket_V1 is
         TokenData calldata tokenData
     )
         public
+        virtual
         OnlyItemOwner(tokenData.tokenAddress, tokenData.tokenId)
         HasNFTTransferApproval(
             tokenData.tokenAddress,
@@ -212,15 +218,21 @@ contract VizvaMarket_V1 is
             msg.sender
         )
         whenNotPaused
-        virtual
         returns (uint256)
     {
+        //checking if the NFT already on Sale.
         require(
             activeItems[tokenData.tokenAddress][tokenData.tokenId] == false,
             "Item is already up for sale!"
         );
+
+        //getting new Id for the Item.
         uint256 newItemId = itemsForSale.length;
+
+        //internal function to add new Item on Market.
         _addItemToMarket(saleType, askingPrice, newItemId, tokenData);
+
+        //return marketId of the Item.
         return newItemId;
     }
 
@@ -242,6 +254,7 @@ contract VizvaMarket_V1 is
     )
         public
         payable
+        virtual
         whenNotPaused
         ItemExists(_id)
         IsForSale(_id)
@@ -252,7 +265,6 @@ contract VizvaMarket_V1 is
             itemsForSale[_id].seller
         )
         nonReentrant
-        virtual
     {
         address seller = itemsForSale[_id].seller;
         {
@@ -315,6 +327,7 @@ contract VizvaMarket_V1 is
      */
     function finalizeBid(BidVoucher calldata voucher, address _winner)
         public
+        virtual
         whenNotPaused
         ItemExists(voucher.marketId)
         IsForSale(voucher.marketId)
@@ -325,7 +338,6 @@ contract VizvaMarket_V1 is
             itemsForSale[voucher.marketId].seller
         )
         nonReentrant
-        virtual
     {
         address signer = _verify(voucher);
         address seller = itemsForSale[voucher.marketId].seller;
@@ -359,7 +371,12 @@ contract VizvaMarket_V1 is
     @dev Function to cancel an Item from sale. Cancelled Items can't be purchased.
     @param _id - id the Sale Item. 
      */
-    function cancelSale(uint256 _id) public ItemExists(_id) IsCancelled(_id) virtual {
+    function cancelSale(uint256 _id)
+        public
+        virtual
+        ItemExists(_id)
+        IsCancelled(_id)
+    {
         address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
         uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
         itemsForSale[_id].cancelled = true;
@@ -376,7 +393,7 @@ contract VizvaMarket_V1 is
      *
      * - the caller must be the owner of the contract.
      */
-    function pause() public onlyOwner virtual {
+    function pause() public virtual onlyOwner {
         _pause();
     }
 
@@ -389,7 +406,7 @@ contract VizvaMarket_V1 is
      *
      * - the caller must be owner of the contract.
      */
-    function unpause() public onlyOwner virtual{
+    function unpause() public virtual onlyOwner {
         _unpause();
     }
 
@@ -434,7 +451,7 @@ contract VizvaMarket_V1 is
         BidVoucher calldata voucher,
         address _winner,
         address _seller
-    ) internal virtual{
+    ) internal virtual {
         address tokenAddress = itemsForSale[voucher.marketId]
             .tokenData
             .tokenAddress;
