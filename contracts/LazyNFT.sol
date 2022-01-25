@@ -116,7 +116,7 @@ contract VizvaLazyNFT_V1 is
             transferAmount,
             commissionValue,
             signer,
-            msg.sender
+            _msgSender()
         );
 
         //returning tokenId

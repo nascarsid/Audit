@@ -71,7 +71,7 @@ contract Vizva721 is
     {
         _tokenIds.increment();
         uint256 tokenId = _tokenIds.current();
-        _safeMint(msg.sender, tokenId);
+        _safeMint(_msgSender(), tokenId);
         setURI(tokenId, _uri);
 
         return tokenId;
