@@ -125,10 +125,6 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const Id = 0;
     const tokenId = 2;
     const tokenAddress = await Vizva721ProxyInstance.address;
-    const contractBalance1 = await web3.eth.getBalance(
-      MarketProxyInstance.address
-    );
-    console.log(parseInt(contractBalance1),"contractBalance1")
     const marketData = await VizvaMarketInstance.buyItem(
       tokenAddress,
       tokenId,

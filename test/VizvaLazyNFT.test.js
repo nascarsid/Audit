@@ -36,11 +36,6 @@ contract("lazyNFT test", async (accounts) => {
       voucher,
       accounts[0]
     );
-    console.log(
-      voucher,
-      parseInt(redeem.logs[3].args["transferValue"]),
-      parseInt(redeem.logs[3].args["commissionValue"])
-    );
     assert(ok);
   });
 
@@ -97,11 +92,6 @@ contract("lazyNFT test", async (accounts) => {
       voucher,
       accounts[0],
       { from: accounts[1], value: buyPrice }
-    );
-    console.log(
-      voucher,
-      parseInt(redeem.logs[3].args["transferValue"]),
-      parseInt(redeem.logs[3].args["commissionValue"])
     );
     const newBalance = await web3.eth.getBalance(accounts[0]);
     const contractBalance = await web3.eth.getBalance(VizvaLazyNFTProxyInstance.address)
