@@ -125,13 +125,17 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const Id = 0;
     const tokenId = 2;
     const tokenAddress = await Vizva721ProxyInstance.address;
+    const contractBalance1 = await web3.eth.getBalance(
+      MarketProxyInstance.address
+    );
+    console.log(parseInt(contractBalance1),"contractBalance1")
     const marketData = await VizvaMarketInstance.buyItem(
       tokenAddress,
       tokenId,
       Id,
       {
         from: accounts[1],
-        value: web3.utils.toWei("1", "ether"),
+        value: web3.utils.toWei("1.025", "ether"),
       }
     );
     const owner = await VizvaTokenInstance.ownerOf.call(2);
@@ -170,11 +174,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
     await WETHInstance.deposit({
       from: accounts[0],
-      value: web3.utils.toWei("1", "ether"),
+      value: web3.utils.toWei("1.025", "ether"),
     });
     await WETHInstance.approve(
       MarketProxyInstance.address,
-      web3.utils.toWei("1", "ether"),
+      web3.utils.toWei("1.025", "ether"),
       { from: accounts[0] }
     );
     const WETHBalanceOwnerBefore = await WETHInstance.balanceOf.call(
@@ -199,7 +203,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       tokenAddress,
       parseInt(tokenId),
       parseInt(marketId),
-      web3.utils.toWei("1", "ether")
+      web3.utils.toWei("1.025", "ether")
     );
     const previousOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
     const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
@@ -218,11 +222,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(accounts[0], currentOwner);
     assert.strictEqual(
       parseInt(WETHBalanceBuyerBefore).toString(),
-      web3.utils.toWei("1", "ether")
+      web3.utils.toWei("1.025", "ether")
     );
     assert.strictEqual(
       parseInt(WETHBalanceOwnerAfter).toString(),
-      web3.utils.toWei("0.975", "ether")
+      web3.utils.toWei("1", "ether")
     );
     assert.strictEqual(
       parseInt(WETHBalanceWallet).toString(),
@@ -266,11 +270,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
     await WETHInstance.deposit({
       from: accounts[0],
-      value: web3.utils.toWei("1", "ether"),
+      value: web3.utils.toWei("1.025", "ether"),
     });
     await WETHInstance.approve(
       MarketProxyInstance.address,
-      web3.utils.toWei("1", "ether"),
+      web3.utils.toWei("1.025", "ether"),
       { from: accounts[0] }
     );
     const WETHBalanceOwnerBefore = await WETHInstance.balanceOf.call(
@@ -295,7 +299,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       tokenAddress,
       parseInt(tokenId),
       parseInt(marketId),
-      web3.utils.toWei("1", "ether")
+      web3.utils.toWei("1.025", "ether")
     );
     const previousOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
     const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
@@ -315,11 +319,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(accounts[0], currentOwner);
     assert.strictEqual(
       parseInt(WETHBalanceBuyerBefore).toString(),
-      web3.utils.toWei("1", "ether")
+      web3.utils.toWei("1.025", "ether")
     );
     assert.strictEqual(
       parseInt(WETHBalanceOwnerAfter).toString(),
-      web3.utils.toWei("0.875", "ether")
+      web3.utils.toWei("0.9", "ether")
     );
     assert.strictEqual(
       parseInt(WETHBalanceWallet).toString(),

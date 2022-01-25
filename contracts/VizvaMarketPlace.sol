@@ -21,7 +21,7 @@ contract VizvaMarket_V1 is
     @dev Struct represent the details of an market order
     Note: 
         uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction
-        TokenData tokenData; //Struct contains the details of a NFT.
+        TokenData tokenData; //Struct contains the details of an NFT.
      */
     struct SaleOrder {
         bool isSold; // shows whether the sale is completed or not.
@@ -30,11 +30,11 @@ contract VizvaMarket_V1 is
         uint256 askingPrice; // the minimum price set by the seller for an NFT.
         uint256 id; //unique id of the sale
         address seller; //address of the seller.
-        TokenData tokenData; //struct contains the details of a NFT.
+        TokenData tokenData; //struct contains the details of an NFT.
     }
 
     /**
-    @dev Struct represent the details of a NFT.
+    @dev Struct represent the details of an NFT.
     Note:
         uint256 amount => Included for the support of ERC1155. Value Should be 1 for ERC721 Token.
      */
@@ -48,7 +48,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Struct represent the details of Bidvoucher.
+    @dev Struct represents the details of Bidvoucher.
      */
     struct BidVoucher {
         address asset; //address of the token used to exchange NFT.
@@ -113,8 +113,8 @@ contract VizvaMarket_V1 is
         address creator
     );
     /**
-     * @dev Emitted when an Item is sold,`price` contains 3 different values
-     * total value, value recieved by seller, value recieved by creator
+     * @dev Emitted when an Item is sold,` price` contains 3 different values
+     * total value, the value received by the seller, value received by creator
      */
     event itemSold(uint256 id, address buyer, uint256[3] price, address asset);
 
@@ -129,14 +129,14 @@ contract VizvaMarket_V1 is
     modifier OnlyItemOwner(address tokenAddress, uint256 tokenId) {
         IERC721Upgradeable tokenContract = IERC721Upgradeable(tokenAddress);
         require(
-            tokenContract.ownerOf(tokenId) == msg.sender,
+            tokenContract.ownerOf(tokenId) == _msgSender(),
             "Only Item owner alowed to list in market"
         );
         _;
     }
 
     /**
-    @dev Modifier to check whether the this contract has transfer approval.
+    @dev Modifier to check whether this contract has transfer approval.
      */
     modifier HasNFTTransferApproval(
         address tokenAddress,
@@ -153,7 +153,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Modifier to check whether Item sale exist.
+    @dev Modifier to check whether Item sales exist.
      */
     modifier ItemExists(uint256 id) {
         require(
@@ -164,7 +164,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Modifier to check whether `id` exist for sale.
+    @dev Modifier to check whether `id` exists for sale.
      */
     modifier IsForSale(uint256 id) {
         require(itemsForSale[id].isSold == false, "Item is already sold!");
@@ -172,7 +172,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Modifier to check whether `id` sale cancelled or not .
+    @dev Modifier to check whether `id` sale cancelled or not.
      */
     modifier IsCancelled(uint256 id) {
         //checking if already cancelled
@@ -184,8 +184,8 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev external function to withdraw MATIC recieved as commission.
-    @param amount - this much token will be transfered to WALLET.
+    @dev external function to withdraw MATIC received as commission.
+    @param amount - this much token will be transferred to WALLET.
      */
     function withdraw(uint256 amount) external virtual onlyOwner {
         // checking if amount is less than available balance.
@@ -194,7 +194,7 @@ contract VizvaMarket_V1 is
             "amount should be less than avalable balance"
         );
 
-        //transfering amount.
+        //transferring amount.
         (bool success, ) = WALLET.call{value: amount}("");
         require(success, "Value Transfer Failed.");
     }
@@ -216,7 +216,7 @@ contract VizvaMarket_V1 is
         HasNFTTransferApproval(
             tokenData.tokenAddress,
             tokenData.tokenId,
-            msg.sender
+            _msgSender()
         )
         whenNotPaused
         returns (uint256)
@@ -229,7 +229,7 @@ contract VizvaMarket_V1 is
 
         //getting new Id for the Item.
         uint256 newItemId = itemsForSale.length;
-        address seller = msg.sender;
+        address seller = _msgSender();
         //internal function to add new Item on Market.
         _addItemToMarket(saleType, askingPrice, newItemId, seller, tokenData);
 
@@ -239,15 +239,15 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Function to add new Item to market.
-    @param _tokenAddress - address of the buying NFT. (For cross checking)
-    @param _tokenId - id of the buying NFT.(For cross checking)
+    @param _tokenAddress - address of the buying NFT. (For cross-checking)
+    @param _tokenId - id of the buying NFT. (For cross-checking)
     @param _id - id of the sale.
     Note -
         if commission is 25, it means 25/(100*10), ie; 2.5% 
-        commission% of the msg.value will be reduced as commission.
-        royalty% of the msg.value will be transfered to NFT creator.
-        The seller will recieve a (100 - commission - royalty)% share of the msg.value.
-        All values are multiplied by 10 to avoid precision issue. 
+        commission% of the askingPrice will be reduced as commission.
+        royalty% of the askingPrice will be transferred to NFT creator.
+        The seller will receive a (100 - royalty)% share of the askingPrice.
+        All values are multiplied by 10 to avoid a precision issue. 
      */
     function buyItem(
         address _tokenAddress,
@@ -296,12 +296,12 @@ contract VizvaMarket_V1 is
             );
 
             // seller not allowed to purchase Item.
-            require(msg.sender != seller, "seller can't purchase created Item");
+            require(_msgSender() != seller, "seller can't purchase created Item");
 
             // checking if the requested tokenId is same as the sale tokenId.
             require(tokenId == _tokenId, "unexpected tokenId");
 
-            // checking if the requested tokenAddress is same as the sale tokenAddress.
+            // checking if the requested tokenAddress is the same as the sale tokenAddress.
             require(tokenAddress == _tokenAddress, "unexpected token Address");
 
             // marking item as sold.
@@ -310,10 +310,10 @@ contract VizvaMarket_V1 is
             // removing item from active item list.
             activeItems[tokenAddress][tokenId] = false;
 
-            //transfering token buyer.
+            //transferring token buyer.
             IERC721Upgradeable(tokenAddress).safeTransferFrom(
                 seller,
-                msg.sender,
+                _msgSender(),
                 tokenId
             );
         }
@@ -321,20 +321,20 @@ contract VizvaMarket_V1 is
             uint16 royalty = itemsForSale[_id].tokenData.royalty;
 
             // calculating share of the seller on Buy price.            
-            uint256 sellerPercentage = 1000 - commission - (royalty * 10);
+            uint256 sellerPercentage = 1000 - (royalty * 10);
 
-            //calculating value receivable for seller.
-            uint256 transferValue = (msg.value * sellerPercentage) / 1000;
+            // calculating value receivable by seller.
+            uint256 transferValue = (itemsForSale[_id].askingPrice * sellerPercentage) / 1000;
 
-            //calculating value receivable for creator.
-            uint256 royaltyValue = (msg.value * royalty) / 100;
+            // calculating value receivable by creator.
+            uint256 royaltyValue = (itemsForSale[_id].askingPrice * royalty) / 100;
 
-            //transfering share of seller.
+            //transferring share of seller.
             (bool valueSuccess, ) = seller.call{value: transferValue}("");
             require(valueSuccess, "Value Transfer Failed.");
 
-            //transfering share of creator. rest of msg.value(buy price) will be
-            // stored in contract as commission.
+            //transferring share of the creator. rest of msg.value(buy price) will be
+            // stored in the contract as commission.
             (bool royaltySuccess, ) = itemsForSale[_id].tokenData.creator.call{
                 value: royaltyValue
             }("");
@@ -343,7 +343,7 @@ contract VizvaMarket_V1 is
             //emmitting item sold event.
             emit itemSold(
                 _id,
-                msg.sender,
+                _msgSender(),
                 [msg.value, transferValue, royaltyValue],
                 address(0)
             );
@@ -353,12 +353,12 @@ contract VizvaMarket_V1 is
     /**
     @dev function to transfer NFT to auction winner.
     @param voucher - contains bidding details. EIP712 type.
-    @param _winner - auction winer address. NFT will be transfered to this address.
+    @param _winner - auction winner address. NFT will be transferred to this address.
     Note -
-        commission% of the msg.value will be transfered as commission to WALLET.
-        royalty% of the msg.value will be transfered to NFT creator.
-        The seller will recieve a (100 - commission - royalty)% of the msg.value.
-        All values are multiplied by 10 to avoid precision issue.  
+        commission% of the askingPrice will be transferred as commission to WALLET.
+        royalty% of the askingPrice will be transferred to NFT creator.
+        The seller will receive a (100 - royalty)% of the msg.value.
+        All values are multiplied by 10 to avoid a precision issue.  
      */
     function finalizeBid(BidVoucher calldata voucher, address _winner)
         public
@@ -383,31 +383,33 @@ contract VizvaMarket_V1 is
         //getting tokenId from sale data.
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
+        //checking if the Item is on Auction
         require(
             itemsForSale[voucher.marketId].saleType == 2,
             "can't bid token on instant sale"
         );
+
+        // make sure signature is valid and get the address of the signer
         require(signer == _winner, "Signature invalid or unauthorized");
 
+        // checking if the value includes commission.
         require(
-            voucher.bid >= itemsForSale[voucher.marketId].askingPrice,
-            "bid amount is lesser than min. price"
+            voucher.bid >= ((itemsForSale[voucher.marketId].askingPrice) * (1000 + commission))/1000,
+            "bid amount is lesser than required price"
         );
+
+        // checking if auction winner is the seller.
         require(_winner != seller, "seller can't purchase created Item");
 
+        // checking if the requested tokenId is same as the sale tokenId.
         require(tokenId == voucher.tokenId, "unexpected tokenId");
 
-        require(!itemsForSale[voucher.marketId].isSold, "Item already sold");
-
-        require(
-            !itemsForSale[voucher.marketId].cancelled,
-            "Item sale cancelled"
-        );
+        // internal function for finalizing the bid.
         _finalizeBid(voucher, _winner, seller);
     }
 
     /**
-    @dev Function to cancel an Item from sale. Cancelled Items can't be purchased.
+    @dev Function to cancel an item from sale. Cancelled Items can't be purchased.
     @param _id - id the Sale Item. 
      */
     function cancelSale(uint256 _id)
@@ -443,7 +445,7 @@ contract VizvaMarket_V1 is
      *
      * Requirements:
      *
-     * - the caller must be owner of the contract.
+     * - the caller must be the owner of the contract.
      */
     function unpause() public virtual onlyOwner {
         _unpause();
@@ -460,6 +462,8 @@ contract VizvaMarket_V1 is
         address _seller,
         TokenData memory _tokenData
     ) internal virtual {
+
+        // adding data to itemsForSale struct.
         itemsForSale.push(
             SaleOrder(
                 false,
@@ -471,8 +475,14 @@ contract VizvaMarket_V1 is
                 _tokenData
             )
         );
+
+        // adding Item to active list.
         activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
+
+        // checking if requested tokenId is same as that in the Sale Data
         require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
+
+        // emit item added event.
         emit itemAdded(
             _newItemId,
             _tokenData.tokenId,
@@ -492,39 +502,72 @@ contract VizvaMarket_V1 is
         address _winner,
         address _seller
     ) internal virtual {
+
+        // getting tokenAddress from sale data.
         address tokenAddress = itemsForSale[voucher.marketId]
             .tokenData
             .tokenAddress;
+
+        // getting royalty from sale data.
         uint16 royalty = itemsForSale[voucher.marketId].tokenData.royalty;
+
+        // getting tokenId from sale data.
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
+        // initializing token instance.
         IERC20Upgradeable ERC20 = IERC20Upgradeable(voucher.asset);
+
+        // checking the balance of ERC20 token is greater than bid.
         require(
             ERC20.balanceOf(_winner) >= voucher.bid,
             "Not enough Token Balance in the winner address"
         );
+
+        // checking if the requested token address is same as the voucher token address.
         require(
             tokenAddress == voucher.tokenAddress,
             "unexpected token Address"
         );
+
+        // marking the Item as sold.
         itemsForSale[voucher.marketId].isSold = true;
+
+        // removing Item from active list.
         activeItems[tokenAddress][tokenId] = false;
+
+        // transferring NFT.
         IERC721Upgradeable(tokenAddress).safeTransferFrom(
             _seller,
             _winner,
             tokenId
         );
+
+        // calculating share of the seller on Buy price. 
         uint256 sellerPercentage = 1000 - commission - (royalty * 10);
-        uint256 transferValue = (voucher.bid * sellerPercentage) / 1000;
-        uint256 royaltyValue = (voucher.bid * royalty) / 100;
-        uint256 commissionValue = (voucher.bid * 25) / 1000;
+
+        // calculating value receivable by seller.
+        uint256 transferValue = (itemsForSale[voucher.marketId].askingPrice * sellerPercentage) / 1000;
+
+        // calculating royalty value receivable by creator.
+        uint256 royaltyValue = (itemsForSale[voucher.marketId].askingPrice * royalty) / 100;
+
+        // calculating the commission value.
+        uint256 commissionValue = (itemsForSale[voucher.marketId].askingPrice * commission) / 1000;
+
+        // transferring seller share.
         ERC20.transferFrom(_winner, _seller, transferValue);
+
+        // transferring royalty value.
         ERC20.transferFrom(
             _winner,
             itemsForSale[voucher.marketId].tokenData.creator,
             royaltyValue
         );
+
+        // transferring commission to the wallet.
         ERC20.transferFrom(_winner, WALLET, commissionValue);
+
+        // emiting item sold event.
         emit itemSold(
             voucher.marketId,
             _winner,
