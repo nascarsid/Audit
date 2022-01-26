@@ -69,9 +69,16 @@ contract Vizva721 is
         whenNotPaused
         returns (uint256)
     {
+        // incrimenting counter by 1
         _tokenIds.increment();
+
+        // save current counter value as tokenId
         uint256 tokenId = _tokenIds.current();
+
+        // minting token to callers address.
         _safeMint(_msgSender(), tokenId);
+
+        // setting tokenUri
         setURI(tokenId, _uri);
 
         return tokenId;
