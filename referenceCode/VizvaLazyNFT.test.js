@@ -3,7 +3,7 @@ const assert = require("assert");
 const { ethers } = require("ethers");
 const lazyNFT = artifacts.require("VizvaLazyNFT_V1");
 const proxyContract = artifacts.require("LazyNFTProxy");
-const { LazyMinter } = require("./LazyMinter.test");
+const { LazyMinter } = require("../test/LazyMinter.test");
 
 const wallets = ethers.Wallet.fromMnemonic(
   "maple section rate kid degree still notable shaft room skull news lens"
