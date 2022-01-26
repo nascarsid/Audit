@@ -365,6 +365,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     });
     const currBalance = await web3.eth.getBalance(accounts[0]);
     const currentOwner = await VizvaMarketInstance.ownerOf.call(1);
+
+    //const allItems = await VizvaMarketInstance.getAllItemForSale.call();
+    //console.log(allItems)
     //console.log(redeem.logs, parseInt(prevBalance), parseInt(currBalance), currentOwner,redeem.logs[6].args["buyer"] );
     assert.strictEqual(currentOwner, redeem.logs[6].args["buyer"], "token owner mismatch");
   });

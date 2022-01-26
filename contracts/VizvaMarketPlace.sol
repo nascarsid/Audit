@@ -227,6 +227,11 @@ contract VizvaMarket_V1 is
         require(success, "Value Transfer Failed.");
     }
 
+    // public function to get all items for sale
+    function getAllItemForSale() public view returns (SaleOrder[] memory saleOrder){
+        return itemsForSale;
+    }
+
     /**
     @dev function to update the commission of the Marketplace.
     @param _newValue - new value for the commission. 
