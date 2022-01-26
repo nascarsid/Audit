@@ -1,3 +1,7 @@
+<img src="https://booliennetwork.com/img/boolien-logo.png" width="300">
+
+***
+
 VIZVA MARKETPLACE SMARTCONTRACTS
 ================================
 
