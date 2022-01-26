@@ -484,6 +484,7 @@ contract VizvaMarket_V1 is
     function redeem(NFTVoucher calldata voucher, address creator)
         public
         payable
+        whenNotPaused
         returns (uint256)
     {
         // make sure signature is valid and get the address of the signer
