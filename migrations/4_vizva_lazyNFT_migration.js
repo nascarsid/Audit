@@ -10,7 +10,7 @@ module.exports = async function (deployer) {
       "VIZVA TOKEN",
       "VIZVA-L",
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
-      "VIZVANFT-Voucher",
+      "VIZVA_MARKETPLACE",
       "1"
     )
     .encodeABI();

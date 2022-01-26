@@ -3,7 +3,6 @@ pragma solidity 0.8.2;
 pragma abicoder v2; // required to accept structs as function parameters
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
@@ -30,6 +29,7 @@ contract VizvaLazyNFT_V1 is
     struct NFTVoucher {
         uint256 tokenId;
         uint256 minPrice;
+        uint16 royalty;
         string uri;
         bytes signature;
     }
@@ -134,7 +134,7 @@ contract VizvaLazyNFT_V1 is
 
     /// @notice Returns a hash of the given NFTVoucher, prepared using EIP712 typed data hashing rules.
     /// @param voucher An NFTVoucher to hash.
-    function _hash(NFTVoucher calldata voucher)
+    function _hash(bytes memory voucher)
         internal
         view
         returns (bytes32)
@@ -142,14 +142,7 @@ contract VizvaLazyNFT_V1 is
         return
             _hashTypedDataV4(
                 keccak256(
-                    abi.encode(
-                        keccak256(
-                            "NFTVoucher(uint256 tokenId,uint256 minPrice,string uri)"
-                        ),
-                        voucher.tokenId,
-                        voucher.minPrice,
-                        keccak256(bytes(voucher.uri))
-                    )
+                    voucher
                 )
             );
     }
@@ -173,7 +166,15 @@ contract VizvaLazyNFT_V1 is
         view
         returns (address)
     {
-        bytes32 digest = _hash(voucher);
+        bytes32 digest = _hash(abi.encode(
+                        keccak256(
+                            "NFTVoucher(uint256 tokenId,uint256 minPrice,uint16 royalty,string uri)"
+                        ),
+                        voucher.tokenId,
+                        voucher.minPrice,
+                        voucher.royalty,
+                        keccak256(bytes(voucher.uri))
+                    ));
         return ECDSAUpgradeable.recover(digest, voucher.signature);
     }
 

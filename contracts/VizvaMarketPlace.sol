@@ -3,9 +3,8 @@
 pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -13,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract VizvaMarket_V1 is
+    ERC721URIStorageUpgradeable,
     EIP712Upgradeable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -67,6 +67,7 @@ contract VizvaMarket_V1 is
     struct NFTVoucher {
         uint256 tokenId;
         uint256 minPrice;
+        uint16 royalty;
         string uri;
         bytes signature;
     }
@@ -103,9 +104,9 @@ contract VizvaMarket_V1 is
     @dev represent the event emited after redeeming a voucher
      */
     event NFTRedeemed(
+        uint256 minPrice,
         uint256 tokenId,
-        uint256 transferValue,
-        uint256 commissionValue,
+        address tokenAddress,
         address creator,
         address buyer
     );
@@ -130,11 +131,14 @@ contract VizvaMarket_V1 is
     function __VizvaMarket_init(
         uint16 _commission,
         address _wallet,
+        string memory _tokenName,
+        string memory _tokenSymbol,
         string memory SIGNING_DOMAIN,
         string memory SIGNATURE_VERSION
     ) public virtual initializer {
-        __EIP712_init(SIGNING_DOMAIN, SIGNATURE_VERSION);
-        __Pausable_init();
+        __ERC721_init(_tokenName, _tokenSymbol);
+        __EIP712_init_unchained(SIGNING_DOMAIN, SIGNATURE_VERSION);
+        __Pausable_init_unchained();
         __Ownable_init_unchained();
         __VizvaMarket_init_unchained(_wallet, _commission);
     }
@@ -230,7 +234,7 @@ contract VizvaMarket_V1 is
         it should be entered as 25. 
     Requirement:- caller should be the owner.
     */
-    function updateCommission(uint16 _newValue) public onlyOwner virtual {
+    function updateCommission(uint16 _newValue) public virtual onlyOwner {
         require(_newValue < 500, "commission can't be greater than 50%.");
         commission = _newValue;
     }
@@ -365,8 +369,8 @@ contract VizvaMarket_V1 is
                 100;
 
             // calculating commission.
-            uint256 commissionValue = (itemsForSale[_id].askingPrice * commission) /
-                1000;
+            uint256 commissionValue = (itemsForSale[_id].askingPrice *
+                commission) / 1000;
 
             // calculating value receivable by seller.
             uint256 transferValue = msg.value - royaltyValue - commissionValue;
@@ -417,7 +421,7 @@ contract VizvaMarket_V1 is
         nonReentrant
     {
         //retrieving signer address from EIP-712 voucher.
-        address signer = _verify(voucher);
+        address signer = _verifyBid(voucher);
 
         //getting seller address from sale data.
         address seller = itemsForSale[voucher.marketId].seller;
@@ -468,6 +472,68 @@ contract VizvaMarket_V1 is
         itemsForSale[_id].cancelled = true;
         activeItems[tokenAddress][tokenId] = false;
         emit saleCancelled(_id);
+    }
+
+    /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
+    /// @param voucher A signed NFTVoucher that describes the NFT to be redeemed.
+    function redeem(NFTVoucher calldata voucher, address creator)
+        public
+        payable
+        returns (uint256)
+    {
+        // make sure signature is valid and get the address of the signer
+        address signer = _verifyNFTVoucher(voucher);
+
+        // make sure that the signer is authorized to mint NFTs
+        require(signer == creator, "Signature invalid or unauthorized");
+
+        // make sure that the redeemer is paying enough to cover the buyer's cost
+        // the total price should be greater than the sum of minimum price
+        // and commission
+        require(
+            msg.value >= (voucher.minPrice * (1000 + commission)) / 1000,
+            "Insufficient funds to redeem"
+        );
+
+        // first assign the token to the signer, to establish provenance on-chain
+        _safeMint(signer, voucher.tokenId);
+
+        // setting token uri
+        _setTokenURI(voucher.tokenId, voucher.uri);
+
+        //getting approval for transfering NFT
+        _setApprovalForAll(signer, address(this), true);
+
+        // creating token data.
+        TokenData memory _tokenData = TokenData(
+            1,
+            voucher.royalty,
+            voucher.tokenId,
+            1,
+            address(this),
+            signer
+        );
+
+        // getting new market Id
+        uint256 newItemId = itemsForSale.length;
+
+        //adding item to market, to establish provenance on-chain.
+        _addItemToMarket(1, voucher.minPrice, newItemId, signer, _tokenData);
+
+        // transfer the token to the redeemer
+        buyItem(address(this), voucher.tokenId, newItemId);
+
+        //emitting redeem event
+        emit NFTRedeemed(
+            voucher.minPrice,
+            voucher.tokenId,
+            address(this),
+            signer,
+            _msgSender()
+        );
+
+        //returning tokenId
+        return voucher.tokenId;
     }
 
     /**
@@ -621,39 +687,58 @@ contract VizvaMarket_V1 is
     @dev internal function to recover and signed data
     @param voucher EIP712 signed voucher
      */
-    function _verify(BidVoucher calldata voucher)
+    function _verifyBid(BidVoucher calldata voucher)
         internal
         view
         virtual
         returns (address)
     {
-        bytes32 digest = _hash(voucher);
+        bytes32 digest = _hash(
+            abi.encode(
+                keccak256(
+                    "BidVoucher(address asset,address tokenAddress,uint256 tokenId,uint256 marketId,uint256 bid)"
+                ),
+                voucher.asset,
+                voucher.tokenAddress,
+                voucher.tokenId,
+                voucher.marketId,
+                voucher.bid
+            )
+        );
         return ECDSAUpgradeable.recover(digest, voucher.signature);
     }
 
-    /// @notice Returns a hash of the given BIDVoucher, prepared using EIP712 typed data hashing rules.
-    /// @param voucher An BIDVoucher to hash.
-    function _hash(BidVoucher calldata voucher)
+    /// @notice Verifies the signature for a given NFTVoucher, returning the address of the signer.
+    /// @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
+    /// @param voucher An NFTVoucher describing an unminted NFT.
+    function _verifyNFTVoucher(NFTVoucher calldata voucher)
+        internal
+        view
+        returns (address)
+    {
+        bytes32 digest = _hash(
+            abi.encode(
+                keccak256(
+                    "NFTVoucher(uint256 tokenId,uint256 minPrice,uint16 royalty,string uri)"
+                ),
+                voucher.tokenId,
+                voucher.minPrice,
+                voucher.royalty,
+                keccak256(bytes(voucher.uri))
+            )
+        );
+        return ECDSAUpgradeable.recover(digest, voucher.signature);
+    }
+
+    /// @notice Returns a hash of the given ABI encoded voucher, prepared using EIP712 typed data hashing rules.
+    /// @param voucher An encoded voucher to hash.
+    function _hash(bytes memory voucher)
         internal
         view
         virtual
         returns (bytes32)
     {
-        return
-            _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "BidVoucher(address asset,address tokenAddress,uint256 tokenId,uint256 marketId,uint256 bid)"
-                        ),
-                        voucher.asset,
-                        voucher.tokenAddress,
-                        voucher.tokenId,
-                        voucher.marketId,
-                        voucher.bid
-                    )
-                )
-            );
+        return _hashTypedDataV4(keccak256(voucher));
     }
 
     /// @notice Returns the chain id of the current blockchain.

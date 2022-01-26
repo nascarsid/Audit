@@ -1,7 +1,7 @@
 const ethers = require('ethers')
 
 // These constants must match the ones used in the smart contract.
-const SIGNING_DOMAIN_NAME = "VIZVANFT-Voucher"
+const SIGNING_DOMAIN_NAME = "VIZVA_MARKETPLACE"
 const SIGNING_DOMAIN_VERSION = "1"
 
 /**
@@ -9,7 +9,8 @@ const SIGNING_DOMAIN_VERSION = "1"
  * 
  * @typedef {object} NFTVoucher
  * @property {ethers.BigNumber | number} tokenId the id of the un-minted NFT
- * @property {ethers.BigNumber | number} minPrice the minimum price (in wei) that the creator will accept to redeem this NFT
+ * @property {ethers.BigNumber | number} minPrice the minimum price (in wei) that the creator will accept to redeem this NFT.
+ * @property {ethers.BigNumber | number} roylty percentage of share allotted to creator of the NFT.
  * @property {string} uri the metadata URI to associate with this NFT
  * @property {ethers.BytesLike} signature an EIP-712 signature of all fields in the NFTVoucher, apart from signature itself.
  */
@@ -38,16 +39,18 @@ class LazyMinter {
    * @param {ethers.BigNumber | number} tokenId the id of the un-minted NFT
    * @param {string} uri the metadata URI to associate with this NFT
    * @param {ethers.BigNumber | number} minPrice the minimum price (in wei) that the creator will accept to redeem this NFT. defaults to zero
+   * @param {ethers.BigNumber | number} royalty the royalty (in number) % of the NFT price will credit to the creator. defaults to zero
    * 
    * @returns {NFTVoucher}
    */
-  async createVoucher(tokenId, uri, minPrice = 0) {
-    const voucher = { tokenId, uri, minPrice }
+  async createVoucher(tokenId, uri, minPrice = 0, royalty = 0) {
+    const voucher = { tokenId, minPrice, royalty, uri }
     const domain = await this._signingDomain()
     const types = {
       NFTVoucher: [
         {name: "tokenId", type: "uint256"},
         {name: "minPrice", type: "uint256"},
+        {name: "royalty", type: "uint16"},
         {name: "uri", type: "string"},  
       ]
     }

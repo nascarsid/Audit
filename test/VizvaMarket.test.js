@@ -5,6 +5,7 @@ const VizvaToken = artifacts.require("Vizva721");
 const VizvaMarket = artifacts.require("VizvaMarket_V1");
 const WETH = artifacts.require("WETH9");
 const { LazyBidder } = require("./Bidder.test");
+const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallets = ethers.Wallet.fromMnemonic(
@@ -14,7 +15,7 @@ const wallets = ethers.Wallet.fromMnemonic(
 let MarketProxyInstance;
 let Vizva721ProxyInstance;
 let VizvaTokenInstance;
-let VizvaMarketInstance; 
+let VizvaMarketInstance;
 let WETHInstance;
 
 beforeEach(async () => {
@@ -31,6 +32,8 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       await VizvaMarketInstance.__VizvaMarket_init(
         25,
         "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
+        "VizvaLazyToken",
+        "VizvaL",
         "VIZVA_MARKETPLACE",
         "1"
       );
@@ -138,9 +141,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const contractBalance = await web3.eth.getBalance(
       MarketProxyInstance.address
     );
-    assert.strictEqual(accounts[1], marketData.logs[0].args["buyer"]);
+    assert.strictEqual(accounts[1], marketData.logs[2].args["buyer"]);
     assert.strictEqual(contractBalance, web3.utils.toWei("0.025", "ether"));
-    assert.strictEqual(Id, parseInt(marketData.logs[0].args["id"]));
+    assert.strictEqual(Id, parseInt(marketData.logs[2].args["id"]));
     assert.strictEqual(accounts[1], owner);
   });
 
@@ -213,7 +216,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const WETHBalanceWallet = await WETHInstance.balanceOf.call(
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
     );
-    assert.strictEqual(accounts[0], result.logs[0].args["buyer"]);
+    assert.strictEqual(
+      accounts[0],
+      result.logs[2].args["buyer"],
+      "buyer address mismatch "
+    );
     assert.strictEqual(accounts[1], previousOwner);
     assert.strictEqual(accounts[0], currentOwner);
     assert.strictEqual(
@@ -310,7 +317,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const WETHBalanceWallet = await WETHInstance.balanceOf.call(
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
     );
-    assert.strictEqual(accounts[0], result.logs[0].args["buyer"]);
+    assert.strictEqual(accounts[0], result.logs[2].args["buyer"]);
     assert.strictEqual(accounts[4], previousOwner);
     assert.strictEqual(accounts[0], currentOwner);
     assert.strictEqual(
@@ -333,5 +340,32 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       parseInt(WETHBalanceOwnerBefore),
       parseInt(WETHBalanceBuyerAfter)
     );
+  });
+
+  it("should redeem an nft from signed voucher", async () => {
+    const chainIdBN = await VizvaMarketInstance.getChainID();
+    const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
+    const chainId = await ethers.utils.parseUnits(chainInWei);
+    //console.log('accounts',chainId,chainIdBN.toString(),chainInWei)
+    const lazyMinter = new LazyMinter({
+      contract: VizvaMarketInstance,
+      signer: wallets,
+      chainId,
+    });
+    const voucher = await lazyMinter.createVoucher(
+      1,
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      web3.utils.toWei("1", "ether"),
+      10
+    );
+    const prevBalance = await web3.eth.getBalance(accounts[0]);
+    const redeem = await VizvaMarketInstance.redeem(voucher, accounts[0], {
+      from: accounts[1],
+      value: web3.utils.toWei("1.025", "ether"),
+    });
+    const currBalance = await web3.eth.getBalance(accounts[0]);
+    const currentOwner = await VizvaMarketInstance.ownerOf.call(1);
+    //console.log(redeem.logs, parseInt(prevBalance), parseInt(currBalance), currentOwner,redeem.logs[6].args["buyer"] );
+    assert.strictEqual(currentOwner, redeem.logs[6].args["buyer"], "token owner mismatch");
   });
 });
