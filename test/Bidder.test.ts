@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-//const ethers = require("ethers");
+
 // These constants must match the ones used in the smart contract.
 const SIGNING_DOMAIN_NAME = "VIZVA_MARKETPLACE";
 const SIGNING_DOMAIN_VERSION = "1";
@@ -13,7 +13,7 @@ interface domain {
 
 interface initializer {
   contract: ethers.Contract,
-  signer: ethers.Wallet, 
+  wallet: ethers.Wallet, 
   chainId: ethers.BigNumberish
 }
 
@@ -31,7 +31,7 @@ interface initializer {
 class LazyBidder {
 
   contract: ethers.Contract;
-  signer: ethers.Wallet;
+  wallet: ethers.Wallet;
   chainId: ethers.BigNumberish;
   _domain: domain | null;
   
@@ -40,11 +40,11 @@ class LazyBidder {
    *
    * @param {Object} options
    * @param {ethers.Contract} contract an ethers Contract that's wired up to the deployed contract
-   * @param {ethers.Signer} signer a Signer whose account is authorized to mint NFTs on the deployed contract
+   * @param {ethers.Wallet} wallet a Signer whose account is authorized to mint NFTs on the deployed contract
    */
   constructor(initializer:initializer) {
     this.contract = initializer.contract;
-    this.signer = initializer.signer;
+    this.wallet = initializer.wallet;
     this.chainId = initializer.chainId;
     this._domain = null;
   }
@@ -72,7 +72,7 @@ class LazyBidder {
         { name: "bid", type: "uint256" },
       ],
     };
-    const signature = await this.signer._signTypedData(domain, types, voucher);
+    const signature = await this.wallet._signTypedData(domain, types, voucher);
     return {
       ...voucher,
       signature,
@@ -81,7 +81,7 @@ class LazyBidder {
 
   /**
    * @private
-   * @returns {object} the EIP-721 signing domain, tied to the chainId of the signer
+   * @returns {object} the EIP-721 signing domain, tied to the chainId of the wallet
    */
   async _signingDomain() {
     if (this._domain != null) {

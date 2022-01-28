@@ -8,7 +8,7 @@ const { LazyBidder } = require("./Bidder.test");
 const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
-const wallets = ethers.Wallet.fromMnemonic(
+const wallet = ethers.Wallet.fromMnemonic(
   "maple section rate kid degree still notable shaft room skull news lens"
 );
 
@@ -192,8 +192,8 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const chainId = ethers.utils.parseUnits(chainInWei);
 
     const lazyBidder = new LazyBidder({
-      contract: VizvaMarketInstance,
-      signer: wallets,
+      contract: new ethers.Contract(MarketProxyInstance.address,VizvaMarket.abi, wallet ),
+      wallet,
       chainId,
     });
 
@@ -290,10 +290,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const chainIdBN = await VizvaMarketInstance.getChainID();
     const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
     const chainId = ethers.utils.parseUnits(chainInWei);
-
     const lazyBidder = new LazyBidder({
       contract: VizvaMarketInstance,
-      signer: wallets,
+      wallet,
       chainId,
     });
 
@@ -349,7 +348,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     //console.log('accounts',chainId,chainIdBN.toString(),chainInWei)
     const lazyMinter = new LazyMinter({
       contract: VizvaMarketInstance,
-      signer: wallets,
+      wallet,
       chainId,
     });
     const voucher = await lazyMinter.createVoucher(

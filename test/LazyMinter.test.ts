@@ -1,8 +1,21 @@
-const ethers = require('ethers')
+import { ethers } from "ethers";
 
 // These constants must match the ones used in the smart contract.
 const SIGNING_DOMAIN_NAME = "VIZVA_MARKETPLACE"
 const SIGNING_DOMAIN_VERSION = "1"
+
+interface domain {
+  name: string,
+  version: string,
+  verifyingContract: string,
+  chainId: ethers.BigNumberish,
+}
+
+interface initializer {
+  contract: ethers.Contract,
+  wallet: ethers.Wallet, 
+  chainId: ethers.BigNumberish
+}
 
 /**
  * JSDoc typedefs.
@@ -20,17 +33,23 @@ const SIGNING_DOMAIN_VERSION = "1"
  */
 class LazyMinter {
 
+  contract: ethers.Contract;
+  wallet: ethers.Wallet;
+  chainId: ethers.BigNumberish;
+  _domain: domain | null;
+
   /**
    * Create a new LazyMinter targeting a deployed instance of the LazyNFT contract.
    * 
    * @param {Object} options
    * @param {ethers.Contract} contract an ethers Contract that's wired up to the deployed contract
-   * @param {ethers.Signer} signer a Signer whose account is authorized to mint NFTs on the deployed contract
+   * @param {ethers.Wallet} wallet a wallet whose account is authorized to mint NFTs on the deployed contract
    */
-  constructor({ contract, signer, chainId }) {
-    this.contract = contract
-    this.signer = signer
-    this.chainId = chainId
+  constructor(initializer:initializer) {
+    this.contract = initializer.contract;
+    this.wallet = initializer.wallet;
+    this.chainId = initializer.chainId;
+    this._domain = null
   }
 
   /**
@@ -43,7 +62,7 @@ class LazyMinter {
    * 
    * @returns {NFTVoucher}
    */
-  async createVoucher(tokenId, uri, minPrice = 0, royalty = 0) {
+  async createVoucher(tokenId: string, uri: string, minPrice = 0, royalty = 0) {
     const voucher = { tokenId, minPrice, royalty, uri }
     const domain = await this._signingDomain()
     const types = {
@@ -54,7 +73,7 @@ class LazyMinter {
         {name: "uri", type: "string"},  
       ]
     }
-    const signature = await this.signer._signTypedData(domain, types, voucher)
+    const signature = await this.wallet._signTypedData(domain, types, voucher)
     return {
       ...voucher,
       signature,
@@ -63,7 +82,7 @@ class LazyMinter {
 
   /**
    * @private
-   * @returns {object} the EIP-721 signing domain, tied to the chainId of the signer
+   * @returns {object} the EIP-721 signing domain, tied to the chainId of the wallet
    */
   async _signingDomain() {
     if (this._domain != null) {
