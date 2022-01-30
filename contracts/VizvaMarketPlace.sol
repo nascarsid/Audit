@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.2;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "../Interface/IVizvaLazyNFT.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -12,7 +11,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract VizvaMarket_V1 is
-    ERC721URIStorageUpgradeable,
     EIP712Upgradeable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -69,8 +67,12 @@ contract VizvaMarket_V1 is
         uint256 minPrice;
         uint16 royalty;
         string uri;
+        address tokenAddress;
         bytes signature;
     }
+
+    string private constant SIGNING_DOMAIN = "VIZVA_MARKETPLACE";
+    string private constant SIGNATURE_VERSION = "1";
 
     // address to which withdraw function transfers funds.
     address internal WALLET;
@@ -130,13 +132,8 @@ contract VizvaMarket_V1 is
      */
     function __VizvaMarket_init(
         uint16 _commission,
-        address _wallet,
-        string memory _tokenName,
-        string memory _tokenSymbol,
-        string memory SIGNING_DOMAIN,
-        string memory SIGNATURE_VERSION
-    ) public virtual initializer {
-        __ERC721_init(_tokenName, _tokenSymbol);
+        address _wallet
+    ) public initializer {
         __EIP712_init_unchained(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init_unchained();
         __Ownable_init_unchained();
@@ -501,22 +498,17 @@ contract VizvaMarket_V1 is
             "Insufficient funds to redeem"
         );
 
-        // first assign the token to the signer, to establish provenance on-chain
-        _safeMint(signer, voucher.tokenId);
-
-        // setting token uri
-        _setTokenURI(voucher.tokenId, voucher.uri);
-
-        //getting approval for transfering NFT
-        _setApprovalForAll(signer, address(this), true);
-
+        // minting token and assign the token to the signer, to establish provenance on-chain
+        ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
+        redeemableNFT.redeem(signer, voucher.tokenId, voucher.uri);
+        
         // creating token data.
         TokenData memory _tokenData = TokenData(
             1,
             voucher.royalty,
             voucher.tokenId,
             1,
-            address(this),
+            voucher.tokenAddress,
             signer
         );
 
@@ -527,13 +519,13 @@ contract VizvaMarket_V1 is
         _addItemToMarket(1, voucher.minPrice, newItemId, signer, _tokenData);
 
         // transfer the token to the redeemer
-        buyItem(address(this), voucher.tokenId, newItemId);
+        buyItem(voucher.tokenAddress, voucher.tokenId, newItemId);
 
         //emitting redeem event
         emit NFTRedeemed(
             voucher.minPrice,
             voucher.tokenId,
-            address(this),
+            voucher.tokenAddress,
             signer,
             _msgSender()
         );
@@ -725,12 +717,13 @@ contract VizvaMarket_V1 is
         bytes32 digest = _hash(
             abi.encode(
                 keccak256(
-                    "NFTVoucher(uint256 tokenId,uint256 minPrice,uint16 royalty,string uri)"
+                    "NFTVoucher(uint256 tokenId,uint256 minPrice,uint16 royalty,string uri,address tokenAddress)"
                 ),
                 voucher.tokenId,
                 voucher.minPrice,
                 voucher.royalty,
-                keccak256(bytes(voucher.uri))
+                keccak256(bytes(voucher.uri)),
+                voucher.tokenAddress
             )
         );
         return ECDSAUpgradeable.recover(digest, voucher.signature);

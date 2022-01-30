@@ -3,19 +3,22 @@ const MarketProxyContract = artifacts.require("VizvaMarketProxy");
 const Vizva721Proxy = artifacts.require("Vizva721Proxy");
 const VizvaToken = artifacts.require("Vizva721");
 const VizvaMarket = artifacts.require("VizvaMarket_V1");
+const VizvaLazyNFTProxy = artifacts.require("VizvaLazyNFTProxy")
+const VizvaLazyNFT = artifacts.require("VizvaLazyNFT_V1")
 const WETH = artifacts.require("WETH9");
 const { LazyBidder } = require("./Bidder.test");
 const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "maple section rate kid degree still notable shaft room skull news lens"
+  "dish success purpose smooth jazz bleak outdoor visit mosquito river provide battle"
 );
 
 let MarketProxyInstance;
 let Vizva721ProxyInstance;
 let VizvaTokenInstance;
 let VizvaMarketInstance;
+let VizvaLazyInstance;
 let WETHInstance;
 
 beforeEach(async () => {
@@ -23,6 +26,7 @@ beforeEach(async () => {
   Vizva721ProxyInstance = await Vizva721Proxy.deployed();
   VizvaTokenInstance = await VizvaToken.at(Vizva721ProxyInstance.address);
   VizvaMarketInstance = await VizvaMarket.at(MarketProxyInstance.address);
+  VizvaLazyInstance = await VizvaLazyNFT.at(VizvaLazyNFTProxy.address)
   WETHInstance = await WETH.deployed();
 });
 
@@ -32,10 +36,6 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       await VizvaMarketInstance.__VizvaMarket_init(
         25,
         "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
-        "VizvaLazyToken",
-        "VizvaL",
-        "VIZVA_MARKETPLACE",
-        "1"
       );
       assert.fail();
     } catch (error) {
@@ -141,9 +141,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const contractBalance = await web3.eth.getBalance(
       MarketProxyInstance.address
     );
-    assert.strictEqual(accounts[1], marketData.logs[2].args["buyer"]);
+    assert.strictEqual(accounts[1], marketData.logs[0].args["buyer"]);
     assert.strictEqual(contractBalance, web3.utils.toWei("0.025", "ether"));
-    assert.strictEqual(Id, parseInt(marketData.logs[2].args["id"]));
+    assert.strictEqual(Id, parseInt(marketData.logs[0].args["id"]));
     assert.strictEqual(accounts[1], owner);
   });
 
@@ -192,8 +192,12 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const chainId = ethers.utils.parseUnits(chainInWei);
 
     const lazyBidder = new LazyBidder({
-      contract: new ethers.Contract(MarketProxyInstance.address,VizvaMarket.abi, wallet ),
-      wallet,
+      contract: new ethers.Contract(
+        MarketProxyInstance.address,
+        VizvaMarket.abi,
+        wallet
+      ),
+      signer: wallet,
       chainId,
     });
 
@@ -218,7 +222,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
     assert.strictEqual(
       accounts[0],
-      result.logs[2].args["buyer"],
+      result.logs[0].args["buyer"],
       "buyer address mismatch "
     );
     assert.strictEqual(accounts[1], previousOwner);
@@ -292,7 +296,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const chainId = ethers.utils.parseUnits(chainInWei);
     const lazyBidder = new LazyBidder({
       contract: VizvaMarketInstance,
-      wallet,
+      signer: wallet,
       chainId,
     });
 
@@ -316,7 +320,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const WETHBalanceWallet = await WETHInstance.balanceOf.call(
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
     );
-    assert.strictEqual(accounts[0], result.logs[2].args["buyer"]);
+    assert.strictEqual(accounts[0], result.logs[0].args["buyer"]);
     assert.strictEqual(accounts[4], previousOwner);
     assert.strictEqual(accounts[0], currentOwner);
     assert.strictEqual(
@@ -348,10 +352,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     //console.log('accounts',chainId,chainIdBN.toString(),chainInWei)
     const lazyMinter = new LazyMinter({
       contract: VizvaMarketInstance,
-      wallet,
+      signer: wallet,
       chainId,
     });
     const voucher = await lazyMinter.createVoucher(
+      VizvaLazyNFTProxy.address,
       1,
       "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
       web3.utils.toWei("1", "ether"),
@@ -363,11 +368,15 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       value: web3.utils.toWei("1.025", "ether"),
     });
     const currBalance = await web3.eth.getBalance(accounts[0]);
-    const currentOwner = await VizvaMarketInstance.ownerOf.call(1);
+    const currentOwner = await VizvaLazyInstance.ownerOf.call(1);
 
     //const allItems = await VizvaMarketInstance.getAllItemForSale.call();
     //console.log(allItems)
-    //console.log(redeem.logs, parseInt(prevBalance), parseInt(currBalance), currentOwner,redeem.logs[6].args["buyer"] );
-    assert.strictEqual(currentOwner, redeem.logs[6].args["buyer"], "token owner mismatch");
+    //console.log(redeem.logs, parseInt(prevBalance), parseInt(currBalance), currentOwner );
+    assert.strictEqual(
+      currentOwner,
+      redeem.logs[1].args["buyer"],
+      "token owner mismatch"
+    );
   });
 });

@@ -13,7 +13,7 @@ interface domain {
 
 interface initializer {
   contract: ethers.Contract,
-  wallet: ethers.Wallet, 
+  signer: ethers.providers.JsonRpcSigner, 
   chainId: ethers.BigNumberish
 }
 
@@ -31,7 +31,7 @@ interface initializer {
 class LazyBidder {
 
   contract: ethers.Contract;
-  wallet: ethers.Wallet;
+  signer: ethers.providers.JsonRpcSigner;
   chainId: ethers.BigNumberish;
   _domain: domain | null;
   
@@ -40,11 +40,11 @@ class LazyBidder {
    *
    * @param {Object} options
    * @param {ethers.Contract} contract an ethers Contract that's wired up to the deployed contract
-   * @param {ethers.Wallet} wallet a Signer whose account is authorized to mint NFTs on the deployed contract
+   * @param {ethers.Wallet} signer a Signer whose account is authorized to mint NFTs on the deployed contract
    */
   constructor(initializer:initializer) {
     this.contract = initializer.contract;
-    this.wallet = initializer.wallet;
+    this.signer = initializer.signer;
     this.chainId = initializer.chainId;
     this._domain = null;
   }
@@ -72,7 +72,7 @@ class LazyBidder {
         { name: "bid", type: "uint256" },
       ],
     };
-    const signature = await this.wallet._signTypedData(domain, types, voucher);
+    const signature = await this.signer._signTypedData(domain, types, voucher);
     return {
       ...voucher,
       signature,
@@ -81,7 +81,7 @@ class LazyBidder {
 
   /**
    * @private
-   * @returns {object} the EIP-721 signing domain, tied to the chainId of the wallet
+   * @returns {object} the EIP-721 signing domain, tied to the chainId of the signer
    */
   async _signingDomain() {
     if (this._domain != null) {

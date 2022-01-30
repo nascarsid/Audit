@@ -10,10 +10,6 @@ module.exports = async function (deployer) {
     .__VizvaMarket_init(
       25,
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
-      "VizvaLazyToken",
-      "VizvaL",
-      "VIZVA_MARKETPLACE",
-      "1"
     )
     .encodeABI();
   await deployer.deploy(adminContract);
