@@ -1,20 +1,18 @@
-const proxyContract = artifacts.require("LazyNFTProxy");
+const proxyContract = artifacts.require("VizvaLazyNFTProxy");
 const vizvaLazyNFTContract = artifacts.require("VizvaLazyNFT_V1");
 const adminContract = artifacts.require("VizvaProxyAdmin");
+const VizvaMarketProxy = artifacts.require("VizvaMarketProxy");
 
 module.exports = async function (deployer) {
   const contract = new web3.eth.Contract(vizvaLazyNFTContract.abi);
   const data = contract.methods
     .__VizvaLazyNFT_V1_init(
-      25,
       "VIZVA TOKEN",
-      "VIZVA-L",
-      "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
-      "VIZVA_MARKETPLACE",
-      "1"
+      "VIZVA",
+      VizvaMarketProxy.address
     )
     .encodeABI();
-  await deployer.deploy(adminContract);
+  //await deployer.deploy(adminContract);
   await deployer.deploy(vizvaLazyNFTContract);
   await deployer.deploy(
     proxyContract,
