@@ -263,11 +263,14 @@ contract VizvaMarket_V1 is
         whenNotPaused
         returns (uint256)
     {
-        //checking if the NFT already on Sale.
+        // checking if the NFT already on Sale.
         require(
             activeItems[tokenData.tokenAddress][tokenData.tokenId] == false,
             "Item is already up for sale!"
         );
+
+        // checking the minimum value
+        require(askingPrice > 0, "minimum price should be greater than 0");
 
         //getting new Id for the Item.
         uint256 newItemId = itemsForSale.length;
