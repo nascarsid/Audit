@@ -63,7 +63,7 @@ class LazyMinter {
    * @param {ethers.BigNumber | number} royalty the royalty (in number) % of the NFT price will credit to the creator. defaults to zero
    * @returns {NFTVoucher}
    */
-  async createVoucher(tokenAddress: string, tokenId: string, uri: string, minPrice = 0, royalty = 0) {
+  async createVoucher(tokenAddress: string, tokenId: string, uri: string, minPrice = "0", royalty = 0) {
     const voucher = { tokenId, minPrice, royalty, uri, tokenAddress }
     const domain = await this._signingDomain()
     const types = {
