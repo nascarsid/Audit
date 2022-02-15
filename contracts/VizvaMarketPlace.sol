@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.2;
 
-import "../Interface/IVizvaLazyNFT.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { ILazyNFT } from "../Interface/IVizvaLazyNFT.sol";
+import { IERC721Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { EIP712Upgradeable, ECDSAUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract VizvaMarket_V1 is
     EIP712Upgradeable,
@@ -50,7 +50,7 @@ contract VizvaMarket_V1 is
     @dev Struct represents the details of Bidvoucher.
      */
     struct BidVoucher {
-        address asset; //address of the token used to exchange NFT.
+        address asset; //address of the ERC20 token used to exchange NFT(eg: WETH).
         address tokenAddress; //NFT smartcontract address.
         uint256 tokenId; //id of the token
         uint256 marketId; //Id of the sale for wich bid placed.
@@ -340,12 +340,6 @@ contract VizvaMarket_V1 is
                 "can't purachase token on auction"
             );
 
-            // seller not allowed to purchase Item.
-            require(
-                _msgSender() != seller,
-                "seller can't purchase created Item"
-            );
-
             // checking if the requested tokenId is same as the sale tokenId.
             require(tokenId == _tokenId, "unexpected tokenId");
 
@@ -405,6 +399,7 @@ contract VizvaMarket_V1 is
     @dev function to transfer NFT to auction winner.
     @param voucher - contains bidding details. EIP712 type.
     @param _winner - auction winner address. NFT will be transferred to this address.
+    Note - This function can be called only by the owner of the NFT.
     Note -
         commission% of the askingPrice will be transferred as commission to WALLET.
         royalty% of the askingPrice will be transferred to NFT creator.
@@ -451,9 +446,6 @@ contract VizvaMarket_V1 is
                     1000,
             "bid amount is lesser than required price"
         );
-
-        // checking if auction winner is the seller.
-        require(_winner != seller, "seller can't purchase created Item");
 
         // checking if the requested tokenId is same as the sale tokenId.
         require(tokenId == voucher.tokenId, "unexpected tokenId");
