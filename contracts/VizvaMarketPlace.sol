@@ -199,7 +199,7 @@ contract VizvaMarket_V1 is
     /**
     @dev Modifier to check whether `id` sale cancelled or not.
      */
-    modifier IsCancelled(uint256 id) {
+    modifier IsNotCancelled(uint256 id) {
         //checking if already cancelled
         require(
             itemsForSale[id].cancelled == false,
@@ -305,7 +305,7 @@ contract VizvaMarket_V1 is
         whenNotPaused
         ItemExists(_id)
         IsForSale(_id)
-        IsCancelled(_id)
+        IsNotCancelled(_id)
         HasNFTTransferApproval(
             itemsForSale[_id].tokenData.tokenAddress,
             itemsForSale[_id].tokenData.tokenId,
@@ -412,7 +412,7 @@ contract VizvaMarket_V1 is
         whenNotPaused
         ItemExists(voucher.marketId)
         IsForSale(voucher.marketId)
-        IsCancelled(voucher.marketId)
+        IsNotCancelled(voucher.marketId)
         HasNFTTransferApproval(
             itemsForSale[voucher.marketId].tokenData.tokenAddress,
             itemsForSale[voucher.marketId].tokenData.tokenId,
@@ -462,7 +462,7 @@ contract VizvaMarket_V1 is
         public
         virtual
         ItemExists(_id)
-        IsCancelled(_id)
+        IsNotCancelled(_id)
     {
         address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
         uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
