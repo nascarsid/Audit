@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.2;
 
-import { ILazyNFT } from "../Interface/IVizvaLazyNFT.sol";
-import { IERC721Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { EIP712Upgradeable, ECDSAUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ILazyNFT} from "../Interface/IVizvaLazyNFT.sol";
+import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract VizvaMarket_V1 is
     EIP712Upgradeable,
@@ -130,10 +131,10 @@ contract VizvaMarket_V1 is
      * SIGNATURE_VERSION {EIP712}
      * Note:initializer modifier is used to prevent initialization of contract twice.
      */
-    function __VizvaMarket_init(
-        uint16 _commission,
-        address _wallet
-    ) public initializer {
+    function __VizvaMarket_init(uint16 _commission, address _wallet)
+        public
+        initializer
+    {
         __EIP712_init_unchained(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init_unchained();
         __Ownable_init_unchained();
@@ -225,7 +226,11 @@ contract VizvaMarket_V1 is
     }
 
     // public function to get all items for sale
-    function getAllItemForSale() public view returns (SaleOrder[] memory saleOrder){
+    function getAllItemForSale()
+        public
+        view
+        returns (SaleOrder[] memory saleOrder)
+    {
         return itemsForSale;
     }
 
