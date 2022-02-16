@@ -3,8 +3,8 @@ const MarketProxyContract = artifacts.require("VizvaMarketProxy");
 const Vizva721Proxy = artifacts.require("Vizva721Proxy");
 const VizvaToken = artifacts.require("Vizva721");
 const VizvaMarket = artifacts.require("VizvaMarket_V1");
-const VizvaLazyNFTProxy = artifacts.require("VizvaLazyNFTProxy")
-const VizvaLazyNFT = artifacts.require("VizvaLazyNFT_V1")
+const VizvaLazyNFTProxy = artifacts.require("VizvaLazyNFTProxy");
+const VizvaLazyNFT = artifacts.require("VizvaLazyNFT_V1");
 const WETH = artifacts.require("WETH9");
 const { LazyBidder } = require("./Bidder.test");
 const { LazyMinter } = require("./LazyMinter.test");
@@ -26,7 +26,7 @@ beforeEach(async () => {
   Vizva721ProxyInstance = await Vizva721Proxy.deployed();
   VizvaTokenInstance = await VizvaToken.at(Vizva721ProxyInstance.address);
   VizvaMarketInstance = await VizvaMarket.at(MarketProxyInstance.address);
-  VizvaLazyInstance = await VizvaLazyNFT.at(VizvaLazyNFTProxy.address)
+  VizvaLazyInstance = await VizvaLazyNFT.at(VizvaLazyNFTProxy.address);
   WETHInstance = await WETH.deployed();
 });
 
@@ -35,7 +35,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     try {
       await VizvaMarketInstance.__VizvaMarket_init(
         25,
-        "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
+        "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
       );
       assert.fail();
     } catch (error) {
@@ -209,7 +209,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       web3.utils.toWei("1.025", "ether")
     );
     const previousOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
-    const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
+    const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0], {
+      from: accounts[1],
+    });
     const currentOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
     const WETHBalanceOwnerAfter = await WETHInstance.balanceOf.call(
       accounts[1]
@@ -308,7 +310,9 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       web3.utils.toWei("1.025", "ether")
     );
     const previousOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
-    const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
+    const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0], {
+      from: accounts[4],
+    });
     const currentOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
     const WETHBalanceOwnerAfter = await WETHInstance.balanceOf.call(
       accounts[4]
@@ -345,6 +349,143 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
   });
 
+  it("allow owner to finalize bid", async () => {
+    const newToken = await VizvaTokenInstance.createItem(
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      { from: accounts[1] }
+    );
+    const tokenId = newToken.logs[0].args["tokenId"];
+    const vizvaAddress = await MarketProxyInstance.address;
+    const tokenAddress = await Vizva721ProxyInstance.address;
+    await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
+      from: accounts[1],
+    });
+    const marketData = await VizvaMarketInstance.addItemToMarket(
+      2,
+      web3.utils.toWei("1", "ether"),
+      {
+        tokenType: 1,
+        royalty: 10,
+        tokenId: parseInt(tokenId),
+        amount: 1,
+        tokenAddress,
+        creator: accounts[1],
+      },
+      { from: accounts[1] }
+    );
+    await WETHInstance.deposit({
+      from: accounts[0],
+      value: web3.utils.toWei("1.025", "ether"),
+    });
+    await WETHInstance.approve(
+      MarketProxyInstance.address,
+      web3.utils.toWei("1.025", "ether"),
+      { from: accounts[0] }
+    );
+    const marketId = parseInt(marketData.logs[0].args["id"]);
+    const chainIdBN = await VizvaMarketInstance.getChainID();
+    const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
+    const chainId = ethers.utils.parseUnits(chainInWei);
+
+    const lazyBidder = new LazyBidder({
+      contract: new ethers.Contract(
+        MarketProxyInstance.address,
+        VizvaMarket.abi,
+        wallet
+      ),
+      signer: wallet,
+      chainId,
+    });
+
+    const voucher = await lazyBidder.createBidVoucher(
+      WETHInstance.address,
+      tokenAddress,
+      parseInt(tokenId),
+      parseInt(marketId),
+      web3.utils.toWei("1.025", "ether")
+    );
+    const previousOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
+    const result = await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
+    const currentOwner = await VizvaTokenInstance.ownerOf.call(tokenId);
+    assert.strictEqual(
+      accounts[0],
+      result.logs[0].args["buyer"],
+      "buyer address mismatch "
+    );
+    assert.strictEqual(accounts[1], previousOwner);
+    assert.strictEqual(accounts[0], currentOwner);
+  });
+
+  it("should fail if bid finalized by neither owner nor seller", async () => {
+    try {
+      const newToken = await VizvaTokenInstance.createItem(
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+        { from: accounts[1] }
+      );
+      const tokenId = newToken.logs[0].args["tokenId"];
+      const vizvaAddress = await MarketProxyInstance.address;
+      const tokenAddress = await Vizva721ProxyInstance.address;
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
+        from: accounts[1],
+      });
+      const marketData = await VizvaMarketInstance.addItemToMarket(
+        2,
+        web3.utils.toWei("1", "ether"),
+        {
+          tokenType: 1,
+          royalty: 10,
+          tokenId: parseInt(tokenId),
+          amount: 1,
+          tokenAddress,
+          creator: accounts[1],
+        },
+        { from: accounts[1] }
+      );
+      await WETHInstance.deposit({
+        from: accounts[0],
+        value: web3.utils.toWei("1.025", "ether"),
+      });
+      await WETHInstance.approve(
+        MarketProxyInstance.address,
+        web3.utils.toWei("1.025", "ether"),
+        { from: accounts[0] }
+      );
+      const marketId = parseInt(marketData.logs[0].args["id"]);
+      const chainIdBN = await VizvaMarketInstance.getChainID();
+      const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
+      const chainId = ethers.utils.parseUnits(chainInWei);
+
+      const lazyBidder = new LazyBidder({
+        contract: new ethers.Contract(
+          MarketProxyInstance.address,
+          VizvaMarket.abi,
+          wallet
+        ),
+        signer: wallet,
+        chainId,
+      });
+
+      const voucher = await lazyBidder.createBidVoucher(
+        WETHInstance.address,
+        tokenAddress,
+        parseInt(tokenId),
+        parseInt(marketId),
+        web3.utils.toWei("1.025", "ether")
+      );
+      await VizvaMarketInstance.finalizeBid(
+        voucher,
+        accounts[0],
+        {from: accounts[3]}
+      );
+      assert.fail("bid finalization failed")
+    } catch (error) {
+      assert.strictEqual(
+        error.message,
+        "Returned error: VM Exception while processing transaction: revert only seller or owner allowed to access this function -- Reason given: only seller or owner allowed to access this function."
+      )
+    }
+  });
+
   it("should redeem an nft from signed voucher", async () => {
     const chainIdBN = await VizvaMarketInstance.getChainID();
     const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
@@ -367,7 +508,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       from: accounts[1],
       value: web3.utils.toWei("1.025", "ether"),
     });
-    const currBalance = await web3.eth.getBalance(accounts[0]);
+    //const currBalance = await web3.eth.getBalance(accounts[0]);
     const currentOwner = await VizvaLazyInstance.ownerOf.call(1);
 
     //const allItems = await VizvaMarketInstance.getAllItemForSale.call();
