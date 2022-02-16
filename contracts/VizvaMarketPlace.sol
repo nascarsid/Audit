@@ -17,6 +17,8 @@ contract VizvaMarket_V1 is
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     /**
     @dev Struct represent the details of an market order
     Note: 
@@ -156,7 +158,18 @@ contract VizvaMarket_V1 is
         IERC721Upgradeable tokenContract = IERC721Upgradeable(tokenAddress);
         require(
             tokenContract.ownerOf(tokenId) == _msgSender(),
-            "Only Item owner alowed to list in market"
+            "Only Item owner allowed to call this function"
+        );
+        _;
+    }
+
+    /**
+    @dev Modifier to restrict function access only to item seller or owner.
+     */
+    modifier OnlyItemSellerOrOwner(uint256 id) {
+        require(
+            itemsForSale[id].seller == _msgSender() || owner() == _msgSender(),
+            "only seller or owner allowed to access this function"
         );
         _;
     }
@@ -213,7 +226,7 @@ contract VizvaMarket_V1 is
     @dev external function to withdraw MATIC received as commission.
     @param amount - this much token will be transferred to WALLET.
      */
-    function withdraw(uint256 amount) external virtual onlyOwner nonReentrant {
+    function withdraw(uint256 amount) external virtual onlyOwner {
         // checking if amount is less than available balance.
         require(
             address(this).balance <= amount,
@@ -316,7 +329,6 @@ contract VizvaMarket_V1 is
             itemsForSale[_id].tokenData.tokenId,
             itemsForSale[_id].seller
         )
-        nonReentrant
     {
         //getting seller address from sale data.
         address seller = itemsForSale[_id].seller;
@@ -417,13 +429,13 @@ contract VizvaMarket_V1 is
         whenNotPaused
         ItemExists(voucher.marketId)
         IsForSale(voucher.marketId)
+        OnlyItemSellerOrOwner(voucher.marketId)
         IsNotCancelled(voucher.marketId)
         HasNFTTransferApproval(
             itemsForSale[voucher.marketId].tokenData.tokenAddress,
             itemsForSale[voucher.marketId].tokenData.tokenId,
             itemsForSale[voucher.marketId].seller
         )
-        nonReentrant
     {
         //retrieving signer address from EIP-712 voucher.
         address signer = _verifyBid(voucher);
@@ -468,6 +480,7 @@ contract VizvaMarket_V1 is
         virtual
         ItemExists(_id)
         IsNotCancelled(_id)
+        OnlyItemSellerOrOwner(_id)
     {
         address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
         uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
@@ -501,7 +514,7 @@ contract VizvaMarket_V1 is
         // minting token and assign the token to the signer, to establish provenance on-chain
         ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
         redeemableNFT.redeem(signer, voucher.tokenId, voucher.uri);
-        
+
         // creating token data.
         TokenData memory _tokenData = TokenData(
             1,
@@ -659,18 +672,18 @@ contract VizvaMarket_V1 is
         // calculating value receivable by seller.
         uint256 transferValue = voucher.bid - commissionValue - royaltyValue;
 
-        // transferring seller share.
-        ERC20.transferFrom(_winner, _seller, transferValue);
+        // transferring seller share.Will revert on failure.
+        ERC20.safeTransferFrom(_winner, _seller, transferValue);
 
-        // transferring royalty value.
-        ERC20.transferFrom(
+        // transferring royalty value.Will revert on failure.
+        ERC20.safeTransferFrom(
             _winner,
             itemsForSale[voucher.marketId].tokenData.creator,
             royaltyValue
         );
 
-        // transferring commission to the wallet.
-        ERC20.transferFrom(_winner, WALLET, commissionValue);
+        // transferring commission to the wallet.Will revert on failure.
+        ERC20.safeTransferFrom(_winner, WALLET, commissionValue);
 
         // emiting item sold event.
         emit itemSold(
