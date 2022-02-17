@@ -248,9 +248,32 @@ contract VizvaMarket_V1 is
         it should be entered as 25. 
     Requirement:- caller should be the owner.
     */
-    function updateCommission(uint16 _newValue) public virtual onlyOwner {
+    function updateCommission(uint16 _newValue)
+        public
+        virtual
+        onlyOwner
+        returns (uint16 _commission)
+    {
         require(_newValue < 500, "commission can't be greater than 50%.");
         commission = _newValue;
+        return commission;
+    }
+
+    /**
+    @dev function to update the WALLET address of the Marketplace.
+    @param _address - new Address for the WALLET. 
+    Note address 0 not allowed as WALLET. 
+    Requirement:- caller should be the owner.
+    */
+    function updateWalletAddress(address _address)
+        public
+        virtual
+        onlyOwner
+        returns (address _wallet)
+    {
+        require(_address != address(0), "Wallet address can't be address 0");
+        WALLET = _address;
+        return WALLET;
     }
 
     /**
