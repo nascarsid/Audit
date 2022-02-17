@@ -147,6 +147,98 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(accounts[1], owner);
   });
 
+  it("should fail if token approval removed before buy", async () => {
+    try {
+      const newToken = await VizvaTokenInstance.createItem(
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+        { from: accounts[7] }
+      );
+      const tokenId = newToken.logs[0].args["tokenId"];
+      const vizvaAddress = await MarketProxyInstance.address;
+      const tokenAddress = await Vizva721ProxyInstance.address;
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
+        from: accounts[7],
+      });
+      const marketData = await VizvaMarketInstance.addItemToMarket(
+        1,
+        web3.utils.toWei("1", "ether"),
+        {
+          tokenType: 1,
+          royalty: 10,
+          tokenId: parseInt(tokenId),
+          amount: 1,
+          tokenAddress,
+          creator: accounts[7],
+        },
+        { from: accounts[7] }
+      );
+
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, false, {
+        from: accounts[7],
+      });
+
+      const marketId = marketData.logs[0].args["id"];
+      const marketData = await VizvaMarketInstance.buyItem(
+        tokenAddress,
+        tokenId,
+        marketId,
+        {
+          from: accounts[8],
+          value: web3.utils.toWei("1.025", "ether"),
+        }
+      );
+      assert.fail("test failed")
+    } catch (error) {
+      assert.strictEqual(error.message, "Returned error: VM Exception while processing transaction: revert ERC721: transfer caller is not owner nor approved -- Reason given: ERC721: transfer caller is not owner nor approved.")
+    }
+  });
+
+  it("should fail if token transfered before buy", async () => {
+    try {
+      const newToken = await VizvaTokenInstance.createItem(
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+        { from: accounts[7] }
+      );
+      const tokenId = newToken.logs[0].args["tokenId"];
+      const vizvaAddress = await MarketProxyInstance.address;
+      const tokenAddress = await Vizva721ProxyInstance.address;
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
+        from: accounts[7],
+      });
+      const marketData = await VizvaMarketInstance.addItemToMarket(
+        1,
+        web3.utils.toWei("1", "ether"),
+        {
+          tokenType: 1,
+          royalty: 10,
+          tokenId: parseInt(tokenId),
+          amount: 1,
+          tokenAddress,
+          creator: accounts[7],
+        },
+        { from: accounts[7] }
+      );
+
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, false, {
+        from: accounts[7],
+      });
+
+      const marketId = marketData.logs[0].args["id"];
+      const marketData = await VizvaMarketInstance.buyItem(
+        tokenAddress,
+        tokenId,
+        marketId,
+        {
+          from: accounts[8],
+          value: web3.utils.toWei("1.025", "ether"),
+        }
+      );
+      assert.fail("test failed")
+    } catch (error) {
+      assert.strictEqual(error.message, "Returned error: VM Exception while processing transaction: revert ERC721: transfer caller is not owner nor approved -- Reason given: ERC721: transfer caller is not owner nor approved.")
+    }
+  });
+
   it("allow auction with seller as creator", async () => {
     const newToken = await VizvaTokenInstance.createItem(
       "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
@@ -472,17 +564,15 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         parseInt(marketId),
         web3.utils.toWei("1.025", "ether")
       );
-      await VizvaMarketInstance.finalizeBid(
-        voucher,
-        accounts[0],
-        {from: accounts[3]}
-      );
-      assert.fail("bid finalization failed")
+      await VizvaMarketInstance.finalizeBid(voucher, accounts[0], {
+        from: accounts[3],
+      });
+      assert.fail("bid finalization failed");
     } catch (error) {
       assert.strictEqual(
         error.message,
         "Returned error: VM Exception while processing transaction: revert only seller or owner allowed to access this function -- Reason given: only seller or owner allowed to access this function."
-      )
+      );
     }
   });
 
