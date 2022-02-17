@@ -28,7 +28,6 @@ contract VizvaMarket_V1 is
         bool cancelled; // shows whether the sale is cancelled or not.
         uint8 saleType; //Used as an Identifier; 1 for instantSale 2 for Auction.
         uint256 askingPrice; // the minimum price set by the seller for an NFT.
-        uint256 id; //unique id of the sale
         address seller; //address of the seller.
         TokenData tokenData; //struct contains the details of an NFT.
     }
@@ -193,10 +192,7 @@ contract VizvaMarket_V1 is
     @dev Modifier to check whether Item sales exist.
      */
     modifier ItemExists(uint256 id) {
-        require(
-            id < itemsForSale.length && itemsForSale[id].id == id,
-            "Could not find requested item"
-        );
+        require(id < itemsForSale.length, "Could not find requested item");
         _;
     }
 
@@ -541,8 +537,8 @@ contract VizvaMarket_V1 is
             _msgSender()
         );
 
-        //returning tokenId
-        return voucher.tokenId;
+        //returning marketId
+        return newItemId;
     }
 
     /**
@@ -589,7 +585,6 @@ contract VizvaMarket_V1 is
                 false,
                 _saleType,
                 _askingPrice,
-                _newItemId,
                 payable(_seller),
                 _tokenData
             )
@@ -597,9 +592,6 @@ contract VizvaMarket_V1 is
 
         // adding Item to active list.
         activeItems[_tokenData.tokenAddress][_tokenData.tokenId] = true;
-
-        // checking if requested tokenId is same as that in the Sale Data
-        require(itemsForSale[_newItemId].id == _newItemId, "Item id mismatch");
 
         // emit item added event.
         emit itemAdded(
