@@ -341,11 +341,6 @@ contract VizvaMarket_V1 is
         ItemExists(_id)
         IsForSale(_id)
         IsNotCancelled(_id)
-        HasNFTTransferApproval(
-            itemsForSale[_id].tokenData.tokenAddress,
-            itemsForSale[_id].tokenData.tokenId,
-            itemsForSale[_id].seller
-        )
     {
         //getting seller address from sale data.
         address seller = itemsForSale[_id].seller;
@@ -448,11 +443,6 @@ contract VizvaMarket_V1 is
         IsForSale(voucher.marketId)
         OnlyItemSellerOrOwner(voucher.marketId)
         IsNotCancelled(voucher.marketId)
-        HasNFTTransferApproval(
-            itemsForSale[voucher.marketId].tokenData.tokenAddress,
-            itemsForSale[voucher.marketId].tokenData.tokenId,
-            itemsForSale[voucher.marketId].seller
-        )
     {
         //retrieving signer address from EIP-712 voucher.
         address signer = _verifyBid(voucher);
