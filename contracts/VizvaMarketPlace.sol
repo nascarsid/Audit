@@ -324,9 +324,9 @@ contract VizvaMarket_V1 is
     @param _id - id of the sale.
     Note -
         if commission is 25, it means 25/(100*10), ie; 2.5% 
-        commission% of the askingPrice will be reduced as commission.
-        royalty% of the askingPrice will be transferred to NFT creator.
-        The seller will receive a (100 - royalty)% share of the askingPrice.
+        commission% of the msg value will be reduced as commission.
+        royalty% of the msg value will be transferred to NFT creator.
+        The seller will receive a (100 - royalty)% share of the msg value.
         Commission values are multiplied by 10 to avoid a precision issues. 
      */
     function buyItem(
@@ -357,9 +357,7 @@ contract VizvaMarket_V1 is
 
             // checking if the value includes commission.
             require(
-                msg.value >=
-                    ((itemsForSale[_id].askingPrice) * (1000 + commission)) /
-                        1000,
+                msg.value >= itemsForSale[_id].askingPrice,
                 "Not enough funds sent, Please include commission"
             );
 
@@ -393,12 +391,10 @@ contract VizvaMarket_V1 is
             uint16 royalty = itemsForSale[_id].tokenData.royalty;
 
             // calculating value receivable by creator. Decimals are not allowed as royalty.
-            uint256 royaltyValue = (itemsForSale[_id].askingPrice * royalty) /
-                100;
+            uint256 royaltyValue = (msg.value * royalty) / 100;
 
             // calculating commission.
-            uint256 commissionValue = (itemsForSale[_id].askingPrice *
-                commission) / 1000;
+            uint256 commissionValue = (msg.value * commission) / 1000;
 
             // calculating value receivable by seller.
             uint256 transferValue = msg.value - royaltyValue - commissionValue;
@@ -464,10 +460,7 @@ contract VizvaMarket_V1 is
 
         // checking if the value includes commission.
         require(
-            voucher.bid >=
-                ((itemsForSale[voucher.marketId].askingPrice) *
-                    (1000 + commission)) /
-                    1000,
+            voucher.bid >= itemsForSale[voucher.marketId].askingPrice,
             "bid amount is lesser than required price"
         );
 
@@ -513,10 +506,7 @@ contract VizvaMarket_V1 is
         // make sure that the redeemer is paying enough to cover the buyer's cost
         // the total price should be greater than the sum of minimum price
         // and commission
-        require(
-            msg.value >= (voucher.minPrice * (1000 + commission)) / 1000,
-            "Insufficient funds to redeem"
-        );
+        require(msg.value >= voucher.minPrice, "Insufficient funds to redeem");
 
         // minting token and assign the token to the signer, to establish provenance on-chain
         ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
@@ -665,12 +655,10 @@ contract VizvaMarket_V1 is
             tokenId
         );
 
-        uint256 commissionValue = (itemsForSale[voucher.marketId].askingPrice *
-            commission) / 1000;
+        uint256 commissionValue = (voucher.bid * commission) / 1000;
 
         // calculating royalty value receivable by creator.
-        uint256 royaltyValue = (itemsForSale[voucher.marketId].askingPrice *
-            royalty) / 100;
+        uint256 royaltyValue = (voucher.bid * royalty) / 100;
 
         // calculating value receivable by seller.
         uint256 transferValue = voucher.bid - commissionValue - royaltyValue;
