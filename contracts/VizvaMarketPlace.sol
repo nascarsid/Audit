@@ -118,6 +118,11 @@ contract VizvaMarket_V1 is
      */
     event saleCancelled(uint256 id);
 
+    /**
+     * @dev Emitted when Item Sale cancelled in a batch.
+     */
+    event batchSaleCancelled(uint256[] id);
+
     // prevent intialization of logic contract.
     constructor() initializer {}
 
@@ -324,9 +329,9 @@ contract VizvaMarket_V1 is
     @param _id - id of the sale.
     Note -
         if commission is 25, it means 25/(100*10), ie; 2.5% 
-        commission% of the askingPrice will be reduced as commission.
-        royalty% of the askingPrice will be transferred to NFT creator.
-        The seller will receive a (100 - royalty)% share of the askingPrice.
+        commission% of the msg value will be reduced as commission.
+        royalty% of the msg value will be transferred to NFT creator.
+        The seller will receive a (100 - royalty)% share of the msg value.
         Commission values are multiplied by 10 to avoid a precision issues. 
      */
     function buyItem(
@@ -357,9 +362,7 @@ contract VizvaMarket_V1 is
 
             // checking if the value includes commission.
             require(
-                msg.value >=
-                    ((itemsForSale[_id].askingPrice) * (1000 + commission)) /
-                        1000,
+                msg.value >= itemsForSale[_id].askingPrice,
                 "Not enough funds sent, Please include commission"
             );
 
@@ -393,12 +396,10 @@ contract VizvaMarket_V1 is
             uint16 royalty = itemsForSale[_id].tokenData.royalty;
 
             // calculating value receivable by creator. Decimals are not allowed as royalty.
-            uint256 royaltyValue = (itemsForSale[_id].askingPrice * royalty) /
-                100;
+            uint256 royaltyValue = (msg.value * royalty) / 100;
 
             // calculating commission.
-            uint256 commissionValue = (itemsForSale[_id].askingPrice *
-                commission) / 1000;
+            uint256 commissionValue = (msg.value * commission) / 1000;
 
             // calculating value receivable by seller.
             uint256 transferValue = msg.value - royaltyValue - commissionValue;
@@ -464,10 +465,7 @@ contract VizvaMarket_V1 is
 
         // checking if the value includes commission.
         require(
-            voucher.bid >=
-                ((itemsForSale[voucher.marketId].askingPrice) *
-                    (1000 + commission)) /
-                    1000,
+            voucher.bid >= itemsForSale[voucher.marketId].askingPrice,
             "bid amount is lesser than required price"
         );
 
@@ -480,7 +478,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Function to cancel an item from sale. Cancelled Items can't be purchased.
-    @param _id - id the Sale Item. 
+    @param _id - id of the Sale Item. 
      */
     function cancelSale(uint256 _id)
         public
@@ -494,6 +492,29 @@ contract VizvaMarket_V1 is
         itemsForSale[_id].cancelled = true;
         activeItems[tokenAddress][tokenId] = false;
         emit saleCancelled(_id);
+    }
+
+    /**
+    @dev Function to cancel sale item in a batch. Cancelled Items can't be purchased.
+    @param ids - array of id the Sale Item. 
+    * Requirements:
+    *
+    * - the caller must be the owner of the contract.
+    */
+    function batchCancelSale(uint256[] calldata ids) public virtual onlyOwner {
+        for (uint256 i = 0; i < ids.length; i++) {
+            uint256 _id = ids[i];
+            if (
+                _id < itemsForSale.length &&
+                itemsForSale[_id].cancelled == false
+            ) {
+                address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
+                uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
+                itemsForSale[_id].cancelled = true;
+                activeItems[tokenAddress][tokenId] = false;
+            }
+            emit batchSaleCancelled(ids);
+        }
     }
 
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
@@ -513,10 +534,7 @@ contract VizvaMarket_V1 is
         // make sure that the redeemer is paying enough to cover the buyer's cost
         // the total price should be greater than the sum of minimum price
         // and commission
-        require(
-            msg.value >= (voucher.minPrice * (1000 + commission)) / 1000,
-            "Insufficient funds to redeem"
-        );
+        require(msg.value >= voucher.minPrice, "Insufficient funds to redeem");
 
         // minting token and assign the token to the signer, to establish provenance on-chain
         ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
@@ -665,12 +683,10 @@ contract VizvaMarket_V1 is
             tokenId
         );
 
-        uint256 commissionValue = (itemsForSale[voucher.marketId].askingPrice *
-            commission) / 1000;
+        uint256 commissionValue = (voucher.bid * commission) / 1000;
 
         // calculating royalty value receivable by creator.
-        uint256 royaltyValue = (itemsForSale[voucher.marketId].askingPrice *
-            royalty) / 100;
+        uint256 royaltyValue = (voucher.bid * royalty) / 100;
 
         // calculating value receivable by seller.
         uint256 transferValue = voucher.bid - commissionValue - royaltyValue;

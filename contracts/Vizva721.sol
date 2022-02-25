@@ -69,19 +69,7 @@ contract Vizva721 is
         whenNotPaused
         returns (uint256)
     {
-        // incrimenting counter by 1
-        _tokenIds.increment();
-
-        // save current counter value as tokenId
-        uint256 tokenId = _tokenIds.current();
-
-        // minting token to callers address.
-        _safeMint(_msgSender(), tokenId);
-
-        // setting tokenUri
-        setURI(tokenId, _uri);
-
-        return tokenId;
+        return _createItem(_uri);
     }
 
     /**
@@ -104,5 +92,25 @@ contract Vizva721 is
         returns (string memory)
     {
         return uri[tokenId];
+    }
+
+    /**
+    @dev internal function to create new NFT.
+    @param _uri metadata URI of token. 
+    */
+    function _createItem(string memory _uri) internal returns (uint256) {
+        // incrimenting counter by 1
+        _tokenIds.increment();
+
+        // save current counter value as tokenId
+        uint256 tokenId = _tokenIds.current();
+
+        // minting token to callers address.
+        _safeMint(_msgSender(), tokenId);
+
+        // setting tokenUri
+        setURI(tokenId, _uri);
+
+        return tokenId;
     }
 }
