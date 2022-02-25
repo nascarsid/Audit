@@ -118,6 +118,11 @@ contract VizvaMarket_V1 is
      */
     event saleCancelled(uint256 id);
 
+    /**
+     * @dev Emitted when Item Sale cancelled in a batch.
+     */
+    event batchSaleCancelled(uint256[] id);
+
     // prevent intialization of logic contract.
     constructor() initializer {}
 
@@ -473,7 +478,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Function to cancel an item from sale. Cancelled Items can't be purchased.
-    @param _id - id the Sale Item. 
+    @param _id - id of the Sale Item. 
      */
     function cancelSale(uint256 _id)
         public
@@ -487,6 +492,29 @@ contract VizvaMarket_V1 is
         itemsForSale[_id].cancelled = true;
         activeItems[tokenAddress][tokenId] = false;
         emit saleCancelled(_id);
+    }
+
+    /**
+    @dev Function to cancel sale item in a batch. Cancelled Items can't be purchased.
+    @param ids - array of id the Sale Item. 
+    * Requirements:
+    *
+    * - the caller must be the owner of the contract.
+    */
+    function batchCancelSale(uint256[] calldata ids) public virtual onlyOwner {
+        for (uint256 i = 0; i < ids.length; i++) {
+            uint256 _id = ids[i];
+            if (
+                _id < itemsForSale.length &&
+                itemsForSale[_id].cancelled == false
+            ) {
+                address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
+                uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
+                itemsForSale[_id].cancelled = true;
+                activeItems[tokenAddress][tokenId] = false;
+            }
+            emit batchSaleCancelled(ids);
+        }
     }
 
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
