@@ -9,6 +9,7 @@ module.exports = async function (deployer) {
   const data = contract.methods
     .__VizvaMarket_init(
       25,
+      web3.utils.toWei("0.005"),
       "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f",
     )
     .encodeABI();
