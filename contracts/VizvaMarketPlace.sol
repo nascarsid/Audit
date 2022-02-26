@@ -77,6 +77,8 @@ contract VizvaMarket_V1 is
     // address to which withdraw function transfers funds.
     address internal WALLET;
 
+    uint256 public minAskingPrice;
+
     // Represent the percentage of share, contract recieve as commission on
     // every NFT sale. Value should be entered as multiplied with 10 to avoid
     // precision error. Commission 2.5% should be added as 25.
@@ -135,22 +137,25 @@ contract VizvaMarket_V1 is
      * SIGNATURE_VERSION {EIP712}
      * Note:initializer modifier is used to prevent initialization of contract twice.
      */
-    function __VizvaMarket_init(uint16 _commission, address _wallet)
-        public
-        initializer
-    {
+    function __VizvaMarket_init(
+        uint16 _commission,
+        uint256 _minimumAskingPrice,
+        address _wallet
+    ) public initializer {
         __EIP712_init_unchained(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init_unchained();
         __Ownable_init_unchained();
-        __VizvaMarket_init_unchained(_wallet, _commission);
+        __VizvaMarket_init_unchained(_wallet, _commission, _minimumAskingPrice);
     }
 
-    function __VizvaMarket_init_unchained(address _wallet, uint16 _commission)
-        internal
-        onlyInitializing
-    {
+    function __VizvaMarket_init_unchained(
+        address _wallet,
+        uint16 _commission,
+        uint256 _minimumAskingPrice
+    ) internal onlyInitializing {
         WALLET = _wallet;
         commission = _commission;
+        minAskingPrice = _minimumAskingPrice;
     }
 
     /**
@@ -247,6 +252,21 @@ contract VizvaMarket_V1 is
     }
 
     /**
+    @dev function to update the minAskingPrice of the Marketplace.
+    @param _newValue - new value for the minAskingPrice. 
+    Requirement:- caller should be the owner.
+    */
+    function updateMinAskingPrice(uint256 _newValue)
+        public
+        virtual
+        onlyOwner
+        returns (uint256 _minAskingPrice)
+    {
+        minAskingPrice = _newValue;
+        return minAskingPrice;
+    }
+
+    /**
     @dev function to update the commission of the Marketplace.
     @param _newValue - new value for the commission. 
     Note value should be multiplied by 10. If commission is 2.5%
@@ -308,9 +328,6 @@ contract VizvaMarket_V1 is
             activeItems[tokenData.tokenAddress][tokenData.tokenId] == false,
             "Item is already up for sale!"
         );
-
-        // checking the minimum value
-        require(askingPrice > 0, "minimum price should be greater than 0");
 
         //getting new Id for the Item.
         uint256 newItemId = itemsForSale.length;
@@ -609,6 +626,12 @@ contract VizvaMarket_V1 is
         address _seller,
         TokenData memory _tokenData
     ) internal virtual {
+        // checking the minimum value
+        require(
+            _askingPrice > minAskingPrice,
+            "minimum price should be greater than minAskingPrice"
+        );
+
         // adding data to itemsForSale struct.
         itemsForSale.push(
             SaleOrder(

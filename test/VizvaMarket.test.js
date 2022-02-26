@@ -11,7 +11,7 @@ const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "dish success purpose smooth jazz bleak outdoor visit mosquito river provide battle"
+  "dice alter junk ripple this trade chunk word juice luxury cream vessel"
 );
 
 let MarketProxyInstance;
@@ -35,6 +35,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     try {
       await VizvaMarketInstance.__VizvaMarket_init(
         25,
+        web3.utils.toWei("0.005"),
         "0x7Adb261Bea663ee06E4ff0a657E65aE91aC7167f"
       );
       assert.fail();
@@ -140,6 +141,36 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(accounts[0], marketData.logs[0].args["creator"]);
   });
 
+  it("should fail if asking price is less than minimum asking price", async () => {
+    try {
+      const newToken = await VizvaTokenInstance.createItem(
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+      );
+      const tokenId = newToken.logs[0].args["tokenId"];
+      const vizvaAddress = await MarketProxyInstance.address;
+      const tokenAddress = await Vizva721ProxyInstance.address;
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true);
+      const marketData = await VizvaMarketInstance.addItemToMarket(
+        1,
+        web3.utils.toWei("0.004", "ether"),
+        {
+          tokenType: 1,
+          royalty: 10,
+          tokenId: parseInt(tokenId),
+          amount: 1,
+          tokenAddress,
+          creator: accounts[0],
+        }
+      );
+      assert.fail("asking price check failed");
+    } catch (error) {
+      assert.strictEqual(
+        error.message,
+        "Returned error: VM Exception while processing transaction: revert minimum price should be greater than minAskingPrice -- Reason given: minimum price should be greater than minAskingPrice."
+      );
+    }
+  });
+
   it("should allow token purchase", async () => {
     const Id = 0;
     const tokenId = 2;
@@ -219,10 +250,8 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     }
     const cancelResult = await VizvaMarketInstance.batchCancelSale(saleIds);
     for (let j = 0; j < saleIds.length; j++) {
-      const saleData = await VizvaMarketInstance.itemsForSale.call(
-        saleIds[j]
-      );
-      assert.ok(saleData.cancelled,`batch test failed for ${saleIds[j]}`);
+      const saleData = await VizvaMarketInstance.itemsForSale.call(saleIds[j]);
+      assert.ok(saleData.cancelled, `batch test failed for ${saleIds[j]}`);
     }
   });
 
@@ -735,6 +764,62 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       currentOwner,
       redeem.logs[1].args["buyer"],
       "token owner mismatch"
+    );
+  });
+
+  it("should fail if voucher minPrice is less than minAskingPrice", async () => {
+    try {
+      const chainIdBN = await VizvaMarketInstance.getChainID();
+      const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
+      const chainId = await ethers.utils.parseUnits(chainInWei);
+      //console.log('accounts',chainId,chainIdBN.toString(),chainInWei)
+      const lazyMinter = new LazyMinter({
+        contract: VizvaMarketInstance,
+        signer: wallet,
+        chainId,
+      });
+      const voucher = await lazyMinter.createVoucher(
+        VizvaLazyNFTProxy.address,
+        2,
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+        web3.utils.toWei("0.004", "ether"),
+        10
+      );
+
+      await VizvaMarketInstance.redeem(voucher, accounts[0], {
+        from: accounts[1],
+        value: web3.utils.toWei("1", "ether"),
+      });
+      assert.fail("voucher min price check failed");
+    } catch (error) {
+      assert.strictEqual(
+        error.message,
+        "Returned error: VM Exception while processing transaction: revert -- Reason given: minimum price should be greater than minAskingPrice."
+      );
+    }
+  });
+
+  it("should allow setting minAskingPrice", async () => {
+    const prevMinAskingPrice = await VizvaMarketInstance.minAskingPrice.call();
+    await VizvaMarketInstance.updateMinAskingPrice(
+      web3.utils.toWei("0.006", "ether")
+    );
+    const currentMinAskingPrice =
+      await VizvaMarketInstance.minAskingPrice.call();
+    assert.strictEqual(
+      parseInt(currentMinAskingPrice).toString(),
+      web3.utils.toWei("0.006", "ether"),
+      "currentMinAskingPrice differs"
+    );
+    assert.strictEqual(
+      parseInt(prevMinAskingPrice).toString(),
+      web3.utils.toWei("0.005", "ether"),
+      "prevMinAskingPrice differs"
+    );
+    assert.strictEqual(
+      parseInt(currentMinAskingPrice).toString(),
+      web3.utils.toWei("0.006", "ether"),
+      "currentMinAskingPrice differs"
     );
   });
 });
