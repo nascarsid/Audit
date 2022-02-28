@@ -15,6 +15,9 @@ contract Vizva721 is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
 
+    // emitted when NFT minted in a batch
+    event batchNFTMinted(uint256 startIndex, uint256 endIndex);
+
     /**
      * @dev initialize the Marketplace contract.
      * setting msg sender as owner.
@@ -59,7 +62,7 @@ contract Vizva721 is
     function unpause() public onlyOwner {
         _unpause();
     }
-    
+
     /**
     @dev function to create new NFT.
     @param _uri metadata URI of token. 
@@ -69,7 +72,45 @@ contract Vizva721 is
         whenNotPaused
         returns (uint256)
     {
-        return _createItem(_uri);
+        // incrimenting counter by 1
+        _tokenIds.increment();
+
+        // save current counter value as tokenId
+        uint256 tokenId = _tokenIds.current();
+
+        require(_createItem(_uri, tokenId), "create new token failed");
+        return tokenId;
+    }
+
+    /**
+    @dev function to create new NFT.
+    @param uriArray metadata URI of token. 
+    */
+    function batchCreateItem(string[] calldata uriArray)
+        public
+        whenNotPaused
+        onlyOwner
+        returns (uint256 startIndex, uint256 endIndex)
+    {
+        // id of the first NFT minted.
+        startIndex = _tokenIds.current() + 1;
+
+        // looping over all the uris in uriArray
+        for (uint256 i = 0; i < uriArray.length; i++) {
+
+            // incrimenting counter by 1
+            _tokenIds.increment();
+
+            // save current counter value as tokenId
+            uint256 tokenId = _tokenIds.current();
+            string memory _uri = uriArray[i];
+            require(_createItem(_uri, tokenId), "create new token failed");
+        }
+
+        // id of the last NFT minted.
+        endIndex = _tokenIds.current();
+        emit batchNFTMinted(startIndex, endIndex);
+        return (startIndex, endIndex);
     }
 
     /**
@@ -98,19 +139,16 @@ contract Vizva721 is
     @dev internal function to create new NFT.
     @param _uri metadata URI of token. 
     */
-    function _createItem(string memory _uri) internal returns (uint256) {
-        // incrimenting counter by 1
-        _tokenIds.increment();
-
-        // save current counter value as tokenId
-        uint256 tokenId = _tokenIds.current();
-
+    function _createItem(string memory _uri, uint256 _tokenId)
+        internal
+        returns (bool)
+    {
         // minting token to callers address.
-        _safeMint(_msgSender(), tokenId);
+        _safeMint(_msgSender(), _tokenId);
 
         // setting tokenUri
-        setURI(tokenId, _uri);
+        setURI(_tokenId, _uri);
 
-        return tokenId;
+        return true;
     }
 }

@@ -11,7 +11,7 @@ const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "surprise auction regret own float debris dance trouble minor another infant menu"
+  "horn secret second photo scheme wild three attitude clip over insect meat"
 );
 
 let MarketProxyInstance;
@@ -78,6 +78,20 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     assert.strictEqual(1, parseInt(tokenId));
   });
 
+  it("should batch create new token", async () => {
+    const newToken = await VizvaTokenInstance.batchCreateItem([
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+    ]);
+    const event = newToken.logs.find((obj) => obj.event == "batchNFTMinted");
+    const { startIndex, endIndex } = event.args;
+    assert.strictEqual(parseInt(startIndex), 2);
+    assert.strictEqual(parseInt(endIndex), 6);
+  });
+
   it("Vizva721 is Pausable", async () => {
     let paused = await VizvaTokenInstance.paused.call();
     assert.strictEqual(false, paused);
@@ -131,7 +145,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       }
     );
     assert.strictEqual(0, parseInt(marketData.logs[0].args["id"]));
-    assert.strictEqual(2, parseInt(marketData.logs[0].args["tokenId"]));
+    assert.strictEqual(7, parseInt(marketData.logs[0].args["tokenId"]));
     assert.strictEqual(tokenAddress, marketData.logs[0].args["tokenAddress"]);
     assert.strictEqual(
       1000000000000000000,
@@ -173,7 +187,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
 
   it("should allow token purchase", async () => {
     const Id = 0;
-    const tokenId = 2;
+    const tokenId = 7;
     const tokenAddress = await Vizva721ProxyInstance.address;
     const marketData = await VizvaMarketInstance.buyItem(
       tokenAddress,
@@ -184,11 +198,15 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         value: web3.utils.toWei("1", "ether"),
       }
     );
-    const owner = await VizvaTokenInstance.ownerOf.call(2);
+    const owner = await VizvaTokenInstance.ownerOf.call(7);
     const contractBalance = await web3.eth.getBalance(
       MarketProxyInstance.address
     );
-    assert.strictEqual(accounts[1], marketData.logs[0].args["buyer"]);
+    assert.strictEqual(
+      accounts[1],
+      marketData.logs[0].args["buyer"],
+      "buyer mismatch"
+    );
     assert.strictEqual(contractBalance, web3.utils.toWei("0.025", "ether"));
     assert.strictEqual(Id, parseInt(marketData.logs[0].args["id"]));
     assert.strictEqual(accounts[1], owner);
@@ -796,7 +814,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       const chainIdBN = await VizvaMarketInstance.getChainID();
       const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
       const chainId = ethers.utils.parseUnits(chainInWei);
-  
+
       const lazyBidder = new LazyBidder({
         contract: new ethers.Contract(
           MarketProxyInstance.address,
@@ -806,7 +824,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         signer: wallet,
         chainId,
       });
-  
+
       const voucher = await lazyBidder.createBidVoucher(
         WETHInstance.address,
         tokenAddress,
@@ -815,9 +833,12 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         web3.utils.toWei("101", "ether")
       );
       await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
-      assert.fail("finalize bid with low balance test failed")
+      assert.fail("finalize bid with low balance test failed");
     } catch (error) {
-      assert.strictEqual(error.message, "Returned error: VM Exception while processing transaction: revert Not enough Token Balance in the winner address -- Reason given: Not enough Token Balance in the winner address.")
+      assert.strictEqual(
+        error.message,
+        "Returned error: VM Exception while processing transaction: revert Not enough Token Balance in the winner address -- Reason given: Not enough Token Balance in the winner address."
+      );
     }
   });
 
