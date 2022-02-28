@@ -267,6 +267,31 @@ contract VizvaMarket_V1 is
     }
 
     /**
+    @dev function to update the minAskingPrice of the Marketplace.
+    @param _newValue - new value for the minAskingPrice. 
+    Requirement:- caller should be the owner.
+    */
+    function updateSalePrice(uint256 _id, uint256 _newValue)
+        public
+        virtual
+        IsForSale(_id)
+        IsNotCancelled(_id)
+        returns (bool)
+    {
+        require(
+            itemsForSale[_id].seller == _msgSender(),
+            "only seller allowed to update the sale price"
+        );
+        require(
+            _newValue >= minAskingPrice,
+            "new value should be greater than minimum asking price"
+        );
+        itemsForSale[_id].askingPrice = _newValue;
+        emit salePriceUpdated(_id);
+        return true;
+    }
+
+    /**
     @dev function to update the commission of the Marketplace.
     @param _newValue - new value for the commission. 
     Note value should be multiplied by 10. If commission is 2.5%

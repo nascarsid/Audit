@@ -822,4 +822,44 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       "currentMinAskingPrice differs"
     );
   });
+
+  it("should allow sale creator to update asking price", async () => {
+    const newToken = await VizvaTokenInstance.createItem(
+      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+    );
+    const tokenId = newToken.logs[0].args["tokenId"];
+    const tokenAddress = await Vizva721ProxyInstance.address;
+    const marketData = await VizvaMarketInstance.addItemToMarket(
+      1,
+      web3.utils.toWei("1", "ether"),
+      {
+        tokenType: 1,
+        royalty: 10,
+        tokenId: parseInt(tokenId),
+        amount: 1,
+        tokenAddress,
+        creator: accounts[0],
+      }
+    );
+    const saleData = await VizvaMarketInstance.itemsForSale.call(
+      marketData.logs[0].args["id"]
+    );
+    assert.strictEqual(
+      parseInt(saleData.askingPrice).toString(),
+      web3.utils.toWei("1", "ether"),
+      "previous asking price mismatch"
+    );
+    await VizvaMarketInstance.updateSalePrice(
+      marketData.logs[0].args["id"],
+      web3.utils.toWei("1.5", "ether")
+    );
+    const saleData = await VizvaMarketInstance.itemsForSale.call(
+      marketData.logs[0].args["id"]
+    );
+    assert.strictEqual(
+      parseInt(saleData.askingPrice).toString(),
+      web3.utils.toWei("1.5", "ether"),
+      "current asking price mismatch"
+    );
+  });
 });
