@@ -14,5 +14,5 @@ interface ILazyNFT {
         address minter,
         uint256 tokenId,
         string memory uri
-    ) external;
+    ) external returns(bool);
 }

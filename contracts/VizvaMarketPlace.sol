@@ -125,6 +125,11 @@ contract VizvaMarket_V1 is
      */
     event batchSaleCancelled(uint256[] id);
 
+    /**
+     * @dev Emitted when Item miniAskingPrice updated.
+     */
+    event salePriceUpdated(uint256 id);
+
     // prevent intialization of logic contract.
     constructor() initializer {}
 
@@ -172,6 +177,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev Modifier to restrict function access only to item seller or owner.
+    @param id market id.
      */
     modifier OnlyItemSellerOrOwner(uint256 id) {
         require(
@@ -388,6 +394,7 @@ contract VizvaMarket_V1 is
         ItemExists(_id)
         IsForSale(_id)
         IsNotCancelled(_id)
+        returns (bool)
     {
         //getting seller address from sale data.
         address seller = itemsForSale[_id].seller;
@@ -464,6 +471,7 @@ contract VizvaMarket_V1 is
                 [msg.value, transferValue, royaltyValue],
                 address(0)
             );
+            return true;
         }
     }
 
@@ -515,7 +523,10 @@ contract VizvaMarket_V1 is
         require(tokenId == voucher.tokenId, "unexpected tokenId");
 
         // internal function for finalizing the bid.
-        _finalizeBid(voucher, _winner, seller);
+        require(
+            _finalizeBid(voucher, _winner, seller),
+            "finalizing bid failed"
+        );
     }
 
     /**
@@ -529,10 +540,7 @@ contract VizvaMarket_V1 is
         IsNotCancelled(_id)
         OnlyItemSellerOrOwner(_id)
     {
-        address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
-        uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
-        itemsForSale[_id].cancelled = true;
-        activeItems[tokenAddress][tokenId] = false;
+        require(_cancelSale(_id), "cancel sale failed");
         emit saleCancelled(_id);
     }
 
@@ -550,10 +558,7 @@ contract VizvaMarket_V1 is
                 _id < itemsForSale.length &&
                 itemsForSale[_id].cancelled == false
             ) {
-                address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
-                uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
-                itemsForSale[_id].cancelled = true;
-                activeItems[tokenAddress][tokenId] = false;
+                require(_cancelSale(_id), "cancel sale failed");
             }
             emit batchSaleCancelled(ids);
         }
@@ -580,7 +585,10 @@ contract VizvaMarket_V1 is
 
         // minting token and assign the token to the signer, to establish provenance on-chain
         ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
-        redeemableNFT.redeem(signer, voucher.tokenId, voucher.uri);
+        require(
+            redeemableNFT.redeem(signer, voucher.tokenId, voucher.uri),
+            "redeeming NFT failed"
+        );
 
         // creating token data.
         TokenData memory _tokenData = TokenData(
@@ -599,7 +607,10 @@ contract VizvaMarket_V1 is
         _addItemToMarket(1, voucher.minPrice, newItemId, signer, _tokenData);
 
         // transfer the token to the redeemer
-        buyItem(voucher.tokenAddress, voucher.tokenId, newItemId);
+        require(
+            buyItem(voucher.tokenAddress, voucher.tokenId, newItemId),
+            "buying new item failed"
+        );
 
         //emitting redeem event
         emit NFTRedeemed(
@@ -653,7 +664,7 @@ contract VizvaMarket_V1 is
     ) internal virtual {
         // checking the minimum value
         require(
-            _askingPrice > minAskingPrice,
+            _askingPrice >= minAskingPrice,
             "minimum price should be greater than minAskingPrice"
         );
 
@@ -691,7 +702,7 @@ contract VizvaMarket_V1 is
         BidVoucher calldata voucher,
         address _winner,
         address _seller
-    ) internal virtual {
+    ) internal virtual returns (bool) {
         // getting tokenAddress from sale data.
         address tokenAddress = itemsForSale[voucher.marketId]
             .tokenData
@@ -759,6 +770,20 @@ contract VizvaMarket_V1 is
             [voucher.bid, transferValue, royaltyValue],
             voucher.asset
         );
+        return true;
+    }
+
+    /**
+    @dev internal function to cancel an item from sale.
+    @param _id - id of the Sale Item. 
+     */
+    function _cancelSale(uint256 _id) internal virtual returns (bool) {
+        address tokenAddress = itemsForSale[_id].tokenData.tokenAddress;
+        uint256 tokenId = itemsForSale[_id].tokenData.tokenId;
+        itemsForSale[_id].cancelled = true;
+        activeItems[tokenAddress][tokenId] = false;
+        emit saleCancelled(_id);
+        return true;
     }
 
     /**

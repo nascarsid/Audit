@@ -11,7 +11,7 @@ const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "dice alter junk ripple this trade chunk word juice luxury cream vessel"
+  "surprise auction regret own float debris dance trouble minor another infant menu"
 );
 
 let MarketProxyInstance;
@@ -767,6 +767,60 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
   });
 
+  it("should fail if balance of winner is leass than bid", async () => {
+    try {
+      const newToken = await VizvaTokenInstance.createItem(
+        "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+        { from: accounts[1] }
+      );
+      const tokenId = newToken.logs[0].args["tokenId"];
+      const vizvaAddress = await MarketProxyInstance.address;
+      const tokenAddress = await Vizva721ProxyInstance.address;
+      await VizvaTokenInstance.setApprovalForAll(vizvaAddress, true, {
+        from: accounts[1],
+      });
+      const marketData = await VizvaMarketInstance.addItemToMarket(
+        2,
+        web3.utils.toWei("101", "ether"),
+        {
+          tokenType: 1,
+          royalty: 10,
+          tokenId: parseInt(tokenId),
+          amount: 1,
+          tokenAddress,
+          creator: accounts[1],
+        },
+        { from: accounts[1] }
+      );
+      const marketId = parseInt(marketData.logs[0].args["id"]);
+      const chainIdBN = await VizvaMarketInstance.getChainID();
+      const chainInWei = web3.utils.fromWei(chainIdBN, "ether");
+      const chainId = ethers.utils.parseUnits(chainInWei);
+  
+      const lazyBidder = new LazyBidder({
+        contract: new ethers.Contract(
+          MarketProxyInstance.address,
+          VizvaMarket.abi,
+          wallet
+        ),
+        signer: wallet,
+        chainId,
+      });
+  
+      const voucher = await lazyBidder.createBidVoucher(
+        WETHInstance.address,
+        tokenAddress,
+        parseInt(tokenId),
+        parseInt(marketId),
+        web3.utils.toWei("101", "ether")
+      );
+      await VizvaMarketInstance.finalizeBid(voucher, accounts[0]);
+      assert.fail("finalize bid with low balance test failed")
+    } catch (error) {
+      assert.strictEqual(error.message, "Returned error: VM Exception while processing transaction: revert Not enough Token Balance in the winner address -- Reason given: Not enough Token Balance in the winner address.")
+    }
+  });
+
   it("should fail if voucher minPrice is less than minAskingPrice", async () => {
     try {
       const chainIdBN = await VizvaMarketInstance.getChainID();
@@ -799,7 +853,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     }
   });
 
-  it("should allow setting minAskingPrice", async () => {
+  it("should allow owner to set minAskingPrice", async () => {
     const prevMinAskingPrice = await VizvaMarketInstance.minAskingPrice.call();
     await VizvaMarketInstance.updateMinAskingPrice(
       web3.utils.toWei("0.006", "ether")

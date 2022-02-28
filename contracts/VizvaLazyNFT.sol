@@ -54,7 +54,7 @@ contract VizvaLazyNFT_V1 is
         address minter,
         uint256 tokenId,
         string memory uri
-    ) public {
+    ) public returns (bool){
 
         // check the caller has the redeemer role.
         require(hasRole(REDEEMER_ROLE, _msgSender()), "unauthorized: Only REDEEMER is allowed to redeem token");
@@ -72,6 +72,7 @@ contract VizvaLazyNFT_V1 is
             minter,
             _msgSender()
         );
+        return true;
     }
     
 
