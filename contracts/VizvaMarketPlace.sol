@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.9;
 
 import {ILazyNFT} from "../Interface/IVizvaLazyNFT.sol";
 import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
@@ -9,11 +9,13 @@ import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgra
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract VizvaMarket_V1 is
     EIP712Upgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -150,6 +152,7 @@ contract VizvaMarket_V1 is
         __EIP712_init_unchained(SIGNING_DOMAIN, SIGNATURE_VERSION);
         __Pausable_init_unchained();
         __Ownable_init_unchained();
+        __ReentrancyGuard_init_unchained();
         __VizvaMarket_init_unchained(_wallet, _commission, _minimumAskingPrice);
     }
 
@@ -570,6 +573,7 @@ contract VizvaMarket_V1 is
         public
         payable
         whenNotPaused
+        nonReentrant
         returns (uint256)
     {
         // make sure signature is valid and get the address of the signer
