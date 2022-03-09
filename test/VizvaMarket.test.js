@@ -296,8 +296,8 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       );
       const id = marketData.logs[0].args["id"];
       await VizvaMarketInstance.cancelSale(id);
-      const saleData = await VizvaMarketInstance.itemsForSale.call(id);
-      const marketData = await VizvaMarketInstance.buyItem(
+      await VizvaMarketInstance.itemsForSale.call(id);
+      await VizvaMarketInstance.buyItem(
         tokenAddress,
         tokenId,
         id,
@@ -346,7 +346,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       });
 
       const marketId = marketData.logs[0].args["id"];
-      const marketData = await VizvaMarketInstance.buyItem(
+      await VizvaMarketInstance.buyItem(
         tokenAddress,
         tokenId,
         marketId,
@@ -395,7 +395,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       });
 
       const marketId = marketData.logs[0].args["id"];
-      const marketData = await VizvaMarketInstance.buyItem(
+      await VizvaMarketInstance.buyItem(
         tokenAddress,
         tokenId,
         marketId,
@@ -928,11 +928,11 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       marketData.logs[0].args["id"],
       web3.utils.toWei("1.5", "ether")
     );
-    const saleData = await VizvaMarketInstance.itemsForSale.call(
+    const _saleData = await VizvaMarketInstance.itemsForSale.call(
       marketData.logs[0].args["id"]
     );
     assert.strictEqual(
-      parseInt(saleData.askingPrice).toString(),
+      parseInt(_saleData.askingPrice).toString(),
       web3.utils.toWei("1.5", "ether"),
       "current asking price mismatch"
     );
