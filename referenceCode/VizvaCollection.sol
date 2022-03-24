@@ -89,12 +89,42 @@ contract Vizva721 is
     *
     * Requirements:
     *
-    * - the caller must be owner of the token.
+    * - the caller must be owner of the contract.
     */
     function burn(uint256 tokenId) public virtual returns (bool) {
         require(ownerOf(tokenId) == _msgSender(), "caller is not the owner");
         _burn(tokenId);
         return true;
+    }
+
+    /**
+    @dev function to create new NFT.
+    @param uriArray metadata URI of token. 
+    */
+    function batchCreateItem(string[] calldata uriArray)
+        public
+        whenNotPaused
+        onlyOwner
+        returns (uint256 startIndex, uint256 endIndex)
+    {
+        // id of the first NFT minted.
+        startIndex = _tokenIds.current() + 1;
+
+        // looping over all the uris in uriArray
+        for (uint256 i = 0; i < uriArray.length; i++) {
+            // incrimenting counter by 1
+            _tokenIds.increment();
+
+            // save current counter value as tokenId
+            uint256 tokenId = _tokenIds.current();
+            string memory _uri = uriArray[i];
+            require(_createItem(_uri, tokenId), "create new token failed");
+        }
+
+        // id of the last NFT minted.
+        endIndex = _tokenIds.current();
+        emit batchNFTMinted(startIndex, endIndex);
+        return (startIndex, endIndex);
     }
 
     /**
