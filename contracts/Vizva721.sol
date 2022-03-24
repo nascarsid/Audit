@@ -67,7 +67,7 @@ contract Vizva721 is
     @dev function to create new NFT.
     @param _uri metadata URI of token. 
     */
-    function createItem(string memory _uri)
+    function createItem(string calldata _uri)
         public
         whenNotPaused
         returns (uint256)
@@ -80,6 +80,21 @@ contract Vizva721 is
 
         require(_createItem(_uri, tokenId), "create new token failed");
         return tokenId;
+    }
+
+    /**
+    @dev function to burn NFT
+    @param tokenId NFT id
+    * See {ERC721}.
+    *
+    * Requirements:
+    *
+    * - the caller must be owner of the token.
+    */
+    function burn(uint256 tokenId) public virtual returns (bool) {
+        require(ownerOf(tokenId) == _msgSender(), "caller is not the owner");
+        _burn(tokenId);
+        return true;
     }
 
     /**
@@ -97,7 +112,6 @@ contract Vizva721 is
 
         // looping over all the uris in uriArray
         for (uint256 i = 0; i < uriArray.length; i++) {
-
             // incrimenting counter by 1
             _tokenIds.increment();
 
