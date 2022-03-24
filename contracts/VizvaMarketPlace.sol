@@ -35,7 +35,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Struct represent the details of an NFT.
+    @dev Struct represents the details of an NFT.
     Note:
         uint256 amount => Included for the support of ERC1155. Value Should be 1 for ERC721 Token.
      */
@@ -81,8 +81,8 @@ contract VizvaMarket_V1 is
 
     uint256 public minAskingPrice;
 
-    // Represent the percentage of share, contract recieve as commission on
-    // every NFT sale. Value should be entered as multiplied with 10 to avoid
+    // Represent the percentage of share, contract received as commission on
+    // every NFT sale. The value should be entered as multiplied by 10 to avoid
     // precision error. Commission 2.5% should be added as 25.
     uint16 public commission;
 
@@ -97,24 +97,29 @@ contract VizvaMarket_V1 is
         uint256 tokenId,
         uint256 askingPrice,
         uint16 royalty,
-        address tokenAddress,
-        address creator
+        address indexed tokenAddress,
+        address indexed creator
     );
     /**
      * @dev Emitted when an Item is sold,` price` contains 3 different values
-     * total value, the value received by the seller, value received by creator
+     * total value, the value received by the seller, the value received by the creator
      */
-    event itemSold(uint256 id, address buyer, uint256[3] price, address asset);
+    event itemSold(
+        uint256 id,
+        address indexed buyer,
+        uint256[3] price,
+        address indexed asset
+    );
 
     /**
-    @dev represent the event emited after redeeming a voucher
+    @dev represent the event emitted after redeeming a voucher
      */
     event NFTRedeemed(
         uint256 minPrice,
         uint256 tokenId,
-        address tokenAddress,
-        address creator,
-        address buyer
+        address indexed tokenAddress,
+        address indexed creator,
+        address indexed buyer
     );
 
     /**
@@ -262,7 +267,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev function to update the minAskingPrice of the Marketplace.
-    @param _newValue - new value for the minAskingPrice. 
+    @param _newValue - the new value for the minAskingPrice. 
     Requirement:- caller should be the owner.
     */
     function updateMinAskingPrice(uint256 _newValue)
@@ -277,7 +282,7 @@ contract VizvaMarket_V1 is
 
     /**
     @dev function to update the minAskingPrice of the Marketplace.
-    @param _newValue - new value for the minAskingPrice. 
+    @param _newValue - the new value for the minAskingPrice. 
     Requirement:- caller should be the owner.
     */
     function updateSalePrice(uint256 _id, uint256 _newValue)
@@ -302,8 +307,8 @@ contract VizvaMarket_V1 is
 
     /**
     @dev function to update the commission of the Marketplace.
-    @param _newValue - new value for the commission. 
-    Note value should be multiplied by 10. If commission is 2.5%
+    @param _newValue - the new value for the commission. 
+    Note value should be multiplied by 10. If the commission is 2.5%
         it should be entered as 25. 
     Requirement:- caller should be the owner.
     */
@@ -381,9 +386,9 @@ contract VizvaMarket_V1 is
     Note -
         if commission is 25, it means 25/(100*10), ie; 2.5% 
         commission% of the msg value will be reduced as commission.
-        royalty% of the msg value will be transferred to NFT creator.
+        royalty% of the msg value will be transferred to the NFT creator.
         The seller will receive a (100 - royalty)% share of the msg value.
-        Commission values are multiplied by 10 to avoid a precision issues. 
+        Commission values are multiplied by 10 to avoid precision issues. 
      */
     function buyItem(
         address _tokenAddress,
@@ -447,7 +452,7 @@ contract VizvaMarket_V1 is
             // getting royality value.
             uint16 royalty = itemsForSale[_id].tokenData.royalty;
 
-            // calculating value receivable by creator. Decimals are not allowed as royalty.
+            // calculating value is receivable by the creator. Decimals are not allowed as royalty.
             uint256 royaltyValue = (msg.value * royalty) / 100;
 
             // calculating commission.
@@ -485,9 +490,9 @@ contract VizvaMarket_V1 is
     Note - This function can be called only by the owner of the NFT.
     Note -
         commission% of the askingPrice will be transferred as commission to WALLET.
-        royalty% of the askingPrice will be transferred to NFT creator.
+        royalty% of the askingPrice will be transferred to the NFT creator.
         The seller will receive a (100 - royalty)% of the msg.value.
-        Commission values are multiplied by 10 to avoid a precision issues.  
+        Commission values are multiplied by 10 to avoid precision issues.  
      */
     function finalizeBid(BidVoucher calldata voucher, address _winner)
         public
@@ -498,8 +503,6 @@ contract VizvaMarket_V1 is
         OnlyItemSellerOrOwner(voucher.marketId)
         IsNotCancelled(voucher.marketId)
     {
-        //retrieving signer address from EIP-712 voucher.
-        address signer = _verifyBid(voucher);
 
         //getting seller address from sale data.
         address seller = itemsForSale[voucher.marketId].seller;
@@ -513,8 +516,8 @@ contract VizvaMarket_V1 is
             "can't bid token on instant sale"
         );
 
-        // make sure signature is valid and get the address of the signer
-        require(signer == _winner, "Signature invalid or unauthorized");
+        // retrieving signer address from EIP-712 voucher and ensuring signature is valid.
+        require(_verifyBid(voucher) == _winner, "Signature invalid or unauthorized");
 
         // checking if the value includes commission.
         require(
@@ -533,7 +536,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev Function to cancel an item from sale. Cancelled Items can't be purchased.
+    @dev Function to cancel an item from the sale. Cancelled Items can't be purchased.
     @param _id - id of the Sale Item. 
      */
     function cancelSale(uint256 _id)
@@ -576,21 +579,25 @@ contract VizvaMarket_V1 is
         nonReentrant
         returns (uint256)
     {
-        // make sure signature is valid and get the address of the signer
-        address signer = _verifyNFTVoucher(voucher);
 
-        // make sure that the signer is authorized to mint NFTs
-        require(signer == creator, "Signature invalid or unauthorized");
+        //retrieving signer address from EIP-712 voucher and ensuring the signer is authorized to mint NFTs
+        require(
+            _verifyNFTVoucher(voucher) == creator,
+            "Signature invalid or unauthorized"
+        );
 
         // make sure that the redeemer is paying enough to cover the buyer's cost
-        // the total price should be greater than the sum of minimum price
+        // the total price should be greater than the sum of the minimum price
         // and commission
         require(msg.value >= voucher.minPrice, "Insufficient funds to redeem");
 
         // minting token and assign the token to the signer, to establish provenance on-chain
-        ILazyNFT redeemableNFT = ILazyNFT(voucher.tokenAddress);
         require(
-            redeemableNFT.redeem(signer, voucher.tokenId, voucher.uri),
+            ILazyNFT(voucher.tokenAddress).redeem(
+                creator,
+                voucher.tokenId,
+                voucher.uri
+            ),
             "redeeming NFT failed"
         );
 
@@ -601,14 +608,14 @@ contract VizvaMarket_V1 is
             voucher.tokenId,
             1,
             voucher.tokenAddress,
-            signer
+            creator
         );
 
         // getting new market Id
         uint256 newItemId = itemsForSale.length;
 
         //adding item to market, to establish provenance on-chain.
-        _addItemToMarket(1, voucher.minPrice, newItemId, signer, _tokenData);
+        _addItemToMarket(1, voucher.minPrice, newItemId, creator, _tokenData);
 
         // transfer the token to the redeemer
         require(
@@ -621,7 +628,7 @@ contract VizvaMarket_V1 is
             voucher.minPrice,
             voucher.tokenId,
             voucher.tokenAddress,
-            signer,
+            creator,
             _msgSender()
         );
 
@@ -718,12 +725,9 @@ contract VizvaMarket_V1 is
         // getting tokenId from sale data.
         uint256 tokenId = itemsForSale[voucher.marketId].tokenData.tokenId;
 
-        // initializing token instance.
-        IERC20Upgradeable ERC20 = IERC20Upgradeable(voucher.asset);
-
         // checking the balance of ERC20 token is greater than bid.
         require(
-            ERC20.balanceOf(_winner) >= voucher.bid,
+            IERC20Upgradeable(voucher.asset).balanceOf(_winner) >= voucher.bid,
             "Not enough Token Balance in the winner address"
         );
 
@@ -754,18 +758,26 @@ contract VizvaMarket_V1 is
         // calculating value receivable by seller.
         uint256 transferValue = voucher.bid - commissionValue - royaltyValue;
 
-        // transferring seller share.Will revert on failure.
-        ERC20.safeTransferFrom(_winner, _seller, transferValue);
+        // transferring seller share. Will revert on failure.
+        IERC20Upgradeable(voucher.asset).safeTransferFrom(
+            _winner,
+            _seller,
+            transferValue
+        );
 
-        // transferring royalty value.Will revert on failure.
-        ERC20.safeTransferFrom(
+        // transferring royalty value. Will revert on failure.
+        IERC20Upgradeable(voucher.asset).safeTransferFrom(
             _winner,
             itemsForSale[voucher.marketId].tokenData.creator,
             royaltyValue
         );
 
-        // transferring commission to the wallet.Will revert on failure.
-        ERC20.safeTransferFrom(_winner, WALLET, commissionValue);
+        // transferring commission to the wallet. Will revert on failure.
+        IERC20Upgradeable(voucher.asset).safeTransferFrom(
+            _winner,
+            WALLET,
+            commissionValue
+        );
 
         // emiting item sold event.
         emit itemSold(
@@ -778,7 +790,7 @@ contract VizvaMarket_V1 is
     }
 
     /**
-    @dev internal function to cancel an item from sale.
+    @dev internal function to cancel an item from the sale.
     @param _id - id of the Sale Item. 
      */
     function _cancelSale(uint256 _id) internal virtual returns (bool) {
