@@ -11,7 +11,7 @@ const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "horn secret second photo scheme wild three attitude clip over insect meat"
+  "use cube armor swing three quantum vicious album thumb this rally catch"
 );
 
 let MarketProxyInstance;
@@ -70,26 +70,13 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     const newToken = await VizvaTokenInstance.createItem(
       "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
     );
+    console.log(`single mint gas used: ${newToken.receipt.gasUsed}`);
     const from = newToken.logs[0].args["from"];
     const to = newToken.logs[0].args["to"];
     const tokenId = newToken.logs[0].args["tokenId"];
     assert.strictEqual("0x0000000000000000000000000000000000000000", from);
     assert.strictEqual(accounts[0], to);
     assert.strictEqual(1, parseInt(tokenId));
-  });
-
-  it("should batch create new token", async () => {
-    const newToken = await VizvaTokenInstance.batchCreateItem([
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-    ]);
-    const event = newToken.logs.find((obj) => obj.event == "batchNFTMinted");
-    const { startIndex, endIndex } = event.args;
-    assert.strictEqual(parseInt(startIndex), 2);
-    assert.strictEqual(parseInt(endIndex), 6);
   });
 
   it("Vizva721 is Pausable", async () => {
@@ -145,7 +132,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       }
     );
     assert.strictEqual(0, parseInt(marketData.logs[0].args["id"]));
-    assert.strictEqual(7, parseInt(marketData.logs[0].args["tokenId"]));
+    assert.strictEqual(2, parseInt(marketData.logs[0].args["tokenId"]));
     assert.strictEqual(tokenAddress, marketData.logs[0].args["tokenAddress"]);
     assert.strictEqual(
       1000000000000000000,
@@ -187,7 +174,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
 
   it("should allow token purchase", async () => {
     const Id = 0;
-    const tokenId = 7;
+    const tokenId = 2;
     const tokenAddress = await Vizva721ProxyInstance.address;
     const marketData = await VizvaMarketInstance.buyItem(
       tokenAddress,
@@ -198,7 +185,7 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
         value: web3.utils.toWei("1", "ether"),
       }
     );
-    const owner = await VizvaTokenInstance.ownerOf.call(7);
+    const owner = await VizvaTokenInstance.ownerOf.call(2);
     const contractBalance = await web3.eth.getBalance(
       MarketProxyInstance.address
     );
@@ -297,15 +284,10 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       const id = marketData.logs[0].args["id"];
       await VizvaMarketInstance.cancelSale(id);
       await VizvaMarketInstance.itemsForSale.call(id);
-      await VizvaMarketInstance.buyItem(
-        tokenAddress,
-        tokenId,
-        id,
-        {
-          from: accounts[1],
-          value: web3.utils.toWei("1", "ether"),
-        }
-      );
+      await VizvaMarketInstance.buyItem(tokenAddress, tokenId, id, {
+        from: accounts[1],
+        value: web3.utils.toWei("1", "ether"),
+      });
       assert.fail("should revert if  purchased a cancelled item: failed");
     } catch (error) {
       assert.strictEqual(
@@ -346,15 +328,10 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       });
 
       const marketId = marketData.logs[0].args["id"];
-      await VizvaMarketInstance.buyItem(
-        tokenAddress,
-        tokenId,
-        marketId,
-        {
-          from: accounts[8],
-          value: web3.utils.toWei("1", "ether"),
-        }
-      );
+      await VizvaMarketInstance.buyItem(tokenAddress, tokenId, marketId, {
+        from: accounts[8],
+        value: web3.utils.toWei("1", "ether"),
+      });
       assert.fail("test failed");
     } catch (error) {
       assert.strictEqual(
@@ -395,15 +372,10 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       });
 
       const marketId = marketData.logs[0].args["id"];
-      await VizvaMarketInstance.buyItem(
-        tokenAddress,
-        tokenId,
-        marketId,
-        {
-          from: accounts[8],
-          value: web3.utils.toWei("1.025", "ether"),
-        }
-      );
+      await VizvaMarketInstance.buyItem(tokenAddress, tokenId, marketId, {
+        from: accounts[8],
+        value: web3.utils.toWei("1.025", "ether"),
+      });
       assert.fail("test failed");
     } catch (error) {
       assert.strictEqual(
@@ -936,5 +908,37 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       web3.utils.toWei("1.5", "ether"),
       "current asking price mismatch"
     );
+  });
+
+  it("should allow owner to create new token in batch", async () => {
+    try {
+      let uriArray = [];
+      for (let i = 0; i < 5; i++) {
+        uriArray.push(
+          "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+        );
+      }
+      const newToken = await VizvaTokenInstance.batchCreateItem(uriArray);
+      console.log(`batch mint gas used: ${newToken.receipt.gasUsed}`);
+      const event = newToken.logs.find((obj) => obj.event == "batchNFTMinted");
+      const { startIndex, endIndex } = event.args;
+      assert.strictEqual(parseInt(startIndex), 24);
+      assert.strictEqual(parseInt(endIndex), 28);
+    } catch (error) {
+      console.error(error);
+    }
+  });
+
+  it("should allow burning of token by owners", async () => {
+    try {
+      const burnToken = await VizvaTokenInstance.burn(28);
+      const event = burnToken.logs.find((obj) => obj.event == "Transfer");
+      const { from, to, tokenId } = event.args;
+      assert.strictEqual(from, accounts[0]);
+      assert.strictEqual(to, "0x0000000000000000000000000000000000000000");
+      assert.strictEqual(parseInt(tokenId), 28);
+    } catch (error) {
+      console.log(error)
+    }
   });
 });
