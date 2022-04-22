@@ -32,6 +32,7 @@ require("ts-node").register({
 const testnetMnemonic = process.env.DEVELOPMENT_MNEMONIC
 //const mnemonic = process.env.MNEMONIC
 const infuraRinkeby  = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;
+const mumbaiSpeedynode = 'https://speedy-nodes-nyc.moralis.io/5f7cfd00d0129dcc6dae58bd/polygon/mumbai'
 //const ropstenInfura = `https://:${process.env.INFURA_SECRET}@ropsten.infura.io/v3/${process.env.INFURA_ID}`
 //const infura = `https://:${process.env.INFURA_SECRET}@mainnet.infura.io/v3/${process.env.INFURA_ID}`
 
@@ -91,6 +92,13 @@ module.exports = {
       //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
       timeoutBlocks: 500,  // # of blocks before a deployment times out  (minimum/default: 50)
       skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+    },
+    mumbai: {
+      provider: () => new HDWalletProvider(testnetMnemonic, mumbaiSpeedynode),
+      network_id: 80001,       // Rinkeby's id
+      //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+      timeoutBlocks: 500,  // # of blocks before a deployment times out  (minimum/default: 50)
+      skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     }
   },
 
@@ -129,6 +137,7 @@ module.exports = {
   ],
 
   api_keys:{
-    etherscan:process.env.ETHERSCAN_API_KEY
+    etherscan:process.env.ETHERSCAN_API_KEY,
+    polygonscan:process.env.POLYGONSCAN_API_KEY
   }
 };
