@@ -96,7 +96,7 @@ contract VizvaMarket_V1 is
         uint256 id,
         uint256 tokenId,
         uint256 askingPrice,
-        uint16 royalty,
+        uint8 saleType,
         address indexed tokenAddress,
         address indexed creator
     );
@@ -699,7 +699,7 @@ contract VizvaMarket_V1 is
             _newItemId,
             _tokenData.tokenId,
             _askingPrice,
-            _tokenData.royalty,
+            _tokenData.tokenType,
             _tokenData.tokenAddress,
             _tokenData.creator
         );
