@@ -74,8 +74,48 @@ contract VizvaLazyNFT_V1 is
         );
         return true;
     }
-    
 
+    /**
+     * @dev Pauses the market contract.
+     *
+     * See {ERC20Pausable} and {Pausable-_pause}.
+     *
+     * Requirements:
+     *
+     * - the caller must be the owner of the contract.
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the market contract.
+     *
+     * See {ERC20Pausable} and {Pausable-_unpause}.
+     *
+     * Requirements:
+     *
+     * - the caller must be owner of the contract.
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    /**
+    @dev function to burn NFT
+    @param tokenId NFT id
+    * See {ERC721}.
+    *
+    * Requirements:
+    *
+    * - the caller must be owner of the token.
+    */
+    function burn(uint256 tokenId) public virtual returns (bool) {
+        require(ownerOf(tokenId) == _msgSender(), "caller is not the owner");
+        _burn(tokenId);
+        return true;
+    }
+    
     function supportsInterface(bytes4 interfaceId)
         public
         view
