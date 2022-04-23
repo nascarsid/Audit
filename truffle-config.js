@@ -24,15 +24,15 @@
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
-const HDWalletProvider = require('@truffle/hdwallet-provider');
-require('dotenv').config()
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+require("dotenv").config();
 require("ts-node").register({
   files: true,
 });
-const testnetMnemonic = process.env.DEVELOPMENT_MNEMONIC
-//const mnemonic = process.env.MNEMONIC
-const infuraRinkeby  = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;
-const mumbaiSpeedynode = 'https://speedy-nodes-nyc.moralis.io/5f7cfd00d0129dcc6dae58bd/polygon/mumbai'
+//const testnetMnemonic = process.env.DEVELOPMENT_MNEMONIC
+const mnemonic = process.env.MNEMONIC
+//const infuraRinkeby = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;
+const mumbaiSpeedynode = process.env.SPEEDY_NODE;
 //const ropstenInfura = `https://:${process.env.INFURA_SECRET}@ropsten.infura.io/v3/${process.env.INFURA_ID}`
 //const infura = `https://:${process.env.INFURA_SECRET}@mainnet.infura.io/v3/${process.env.INFURA_ID}`
 
@@ -55,9 +55,9 @@ module.exports = {
     // options below to some value.
     //
     development: {
-      host: "127.0.0.1",     // Localhost (default: none)
-      port: 7545,            // Standard Ethereum port (default: none)
-      network_id: "5777",       // Any network (default: none)
+      host: "127.0.0.1", // Localhost (default: none)
+      port: 7545, // Standard Ethereum port (default: none)
+      network_id: "5777", // Any network (default: none)
     },
     // Another network with more advanced options...
     // advanced: {
@@ -84,22 +84,22 @@ module.exports = {
     // network_id: 2111,   // This network is yours, in the cloud.
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
-    rinkeby: {
-      provider: () => new HDWalletProvider(testnetMnemonic, infuraRinkeby),
-      network_id: 4,       // Rinkeby's id
-      gas: 6000000,
-      gasPrice: 40000000000,
-      //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-      timeoutBlocks: 500,  // # of blocks before a deployment times out  (minimum/default: 50)
-      skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
-    },
+    // rinkeby: {
+    //   provider: () => new HDWalletProvider(testnetMnemonic, infuraRinkeby),
+    //   network_id: 4, // Rinkeby's id
+    //   gas: 6000000,
+    //   gasPrice: 40000000000,
+    //   //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+    //   timeoutBlocks: 500, // # of blocks before a deployment times out  (minimum/default: 50)
+    //   skipDryRun: true, // Skip dry run before migrations? (default: false for public nets )
+    // },
     mumbai: {
-      provider: () => new HDWalletProvider(testnetMnemonic, mumbaiSpeedynode),
-      network_id: 80001,       // Rinkeby's id
+      provider: () => new HDWalletProvider(mnemonic, mumbaiSpeedynode),
+      network_id: 80001, // Rinkeby's id
       //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-      timeoutBlocks: 500,  // # of blocks before a deployment times out  (minimum/default: 50)
-      skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
-    }
+      timeoutBlocks: 500, // # of blocks before a deployment times out  (minimum/default: 50)
+      skipDryRun: true, // Skip dry run before migrations? (default: false for public nets )
+    },
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -110,16 +110,17 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.8.9",    // Fetch exact version from solc-bin (default: truffle's version)
+      version: "0.8.9", // Fetch exact version from solc-bin (default: truffle's version)
       //docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
-      settings: {          // See the solidity docs for advice about optimization and evmVersion
+      settings: {
+        // See the solidity docs for advice about optimization and evmVersion
         optimizer: {
           enabled: true,
-          runs: 200
+          runs: 200,
         },
-        evmVersion: "london"
-      }
-    }
+        evmVersion: "london",
+      },
+    },
   },
 
   // Truffle DB is currently disabled by default; to enable it, change enabled: false to enabled: true
@@ -129,15 +130,13 @@ module.exports = {
   // $ truffle migrate --reset --compile-all
 
   db: {
-    enabled: false
+    enabled: false,
   },
 
-  plugins: [
-    'truffle-plugin-verify'
-  ],
+  plugins: ["truffle-plugin-verify"],
 
-  api_keys:{
-    etherscan:process.env.ETHERSCAN_API_KEY,
-    polygonscan:process.env.POLYGONSCAN_API_KEY
-  }
+  api_keys: {
+    //etherscan: process.env.ETHERSCAN_API_KEY,
+    polygonscan: process.env.POLYGONSCAN_API_KEY,
+  },
 };
