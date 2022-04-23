@@ -941,4 +941,20 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       assert.fail();
     }
   });
+
+  it("should allow burning of lazy token by owners", async () => {
+    try {
+      const burnToken = await VizvaLazyInstance.burn(1, {
+        from: accounts[1]
+      });
+      const event = burnToken.logs.find((obj) => obj.event == "Transfer");
+      const { from, to, tokenId } = event.args;
+      assert.strictEqual(from, accounts[1]);
+      assert.strictEqual(to, "0x0000000000000000000000000000000000000000");
+      assert.strictEqual(parseInt(tokenId), 1);
+    } catch (error) {
+      console.log(error)
+      assert.fail();
+    }
+  });
 });
