@@ -290,6 +290,7 @@ contract VizvaMarket_V1 is
         virtual
         IsForSale(_id)
         IsNotCancelled(_id)
+        whenNotPaused
         returns (bool)
     {
         require(
@@ -548,6 +549,7 @@ contract VizvaMarket_V1 is
         ItemExists(_id)
         IsNotCancelled(_id)
         OnlyItemSellerOrOwner(_id)
+        whenNotPaused
     {
         require(_cancelSale(_id), "cancel sale failed");
         emit saleCancelled(_id);
