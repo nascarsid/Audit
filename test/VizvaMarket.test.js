@@ -5,13 +5,13 @@ const VizvaToken = artifacts.require("Vizva721");
 const VizvaMarket = artifacts.require("VizvaMarket_V1");
 const VizvaLazyNFTProxy = artifacts.require("VizvaLazyNFTProxy");
 const VizvaLazyNFT = artifacts.require("VizvaLazyNFT_V1");
-const WETH = artifacts.require("WETH9");
+const WETH = artifacts.require('WETH9');
 const { LazyBidder } = require("./Bidder.test");
 const { LazyMinter } = require("./LazyMinter.test");
 const { ethers } = require("ethers");
 
 const wallet = ethers.Wallet.fromMnemonic(
-  "use cube armor swing three quantum vicious album thumb this rally catch"
+  "horn secret second photo scheme wild three attitude clip over insect meat"
 );
 
 let MarketProxyInstance;
@@ -138,7 +138,6 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
       1000000000000000000,
       parseInt(marketData.logs[0].args["askingPrice"])
     );
-    assert.strictEqual(10, parseInt(marketData.logs[0].args["royalty"]));
     assert.strictEqual(accounts[0], marketData.logs[0].args["creator"]);
   });
 
@@ -898,47 +897,48 @@ contract("VIZVA MARKETPLACE TEST", (accounts) => {
     );
     await VizvaMarketInstance.updateSalePrice(
       marketData.logs[0].args["id"],
-      web3.utils.toWei("1.5", "ether")
+      web3.utils.toWei("0.9", "ether")
     );
     const _saleData = await VizvaMarketInstance.itemsForSale.call(
       marketData.logs[0].args["id"]
     );
     assert.strictEqual(
       parseInt(_saleData.askingPrice).toString(),
-      web3.utils.toWei("1.5", "ether"),
+      web3.utils.toWei("0.9", "ether"),
       "current asking price mismatch"
     );
   });
 
-  it("should allow owner to create new token in batch", async () => {
-    try {
-      let uriArray = [];
-      for (let i = 0; i < 5; i++) {
-        uriArray.push(
-          "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
-        );
-      }
-      const newToken = await VizvaTokenInstance.batchCreateItem(uriArray);
-      console.log(`batch mint gas used: ${newToken.receipt.gasUsed}`);
-      const event = newToken.logs.find((obj) => obj.event == "batchNFTMinted");
-      const { startIndex, endIndex } = event.args;
-      assert.strictEqual(parseInt(startIndex), 24);
-      assert.strictEqual(parseInt(endIndex), 28);
-    } catch (error) {
-      console.error(error);
-    }
-  });
+  // it("should allow owner to create new token in batch", async () => {
+  //   try {
+  //     let uriArray = [];
+  //     for (let i = 0; i < 5; i++) {
+  //       uriArray.push(
+  //         "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+  //       );
+  //     }
+  //     const newToken = await VizvaTokenInstance.batchCreateItem(uriArray);
+  //     console.log(`batch mint gas used: ${newToken.receipt.gasUsed}`);
+  //     const event = newToken.logs.find((obj) => obj.event == "batchNFTMinted");
+  //     const { startIndex, endIndex } = event.args;
+  //     assert.strictEqual(parseInt(startIndex), 24);
+  //     assert.strictEqual(parseInt(endIndex), 28);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // });
 
   it("should allow burning of token by owners", async () => {
     try {
-      const burnToken = await VizvaTokenInstance.burn(28);
+      const burnToken = await VizvaTokenInstance.burn(23);
       const event = burnToken.logs.find((obj) => obj.event == "Transfer");
       const { from, to, tokenId } = event.args;
       assert.strictEqual(from, accounts[0]);
       assert.strictEqual(to, "0x0000000000000000000000000000000000000000");
-      assert.strictEqual(parseInt(tokenId), 28);
+      assert.strictEqual(parseInt(tokenId), 23);
     } catch (error) {
       console.log(error)
+      assert.fail();
     }
   });
 });
