@@ -135,7 +135,7 @@ contract VizvaMarket_V1 is
     /**
      * @dev Emitted when Item miniAskingPrice updated.
      */
-    event salePriceUpdated(uint256 id);
+    event salePriceUpdated(uint256 id, uint256 newPrice);
 
     // prevent intialization of logic contract.
     constructor() initializer {}
@@ -294,14 +294,15 @@ contract VizvaMarket_V1 is
     {
         require(
             itemsForSale[_id].seller == _msgSender(),
-            "only seller allowed to update the sale price"
+            "Vizva: only seller allowed to update the sale price"
         );
         require(
-            _newValue >= minAskingPrice,
-            "new value should be greater than minimum asking price"
+            _newValue >= minAskingPrice &&
+                _newValue < itemsForSale[_id].askingPrice,
+            "Vizva: new price not in acceptable range"
         );
         itemsForSale[_id].askingPrice = _newValue;
-        emit salePriceUpdated(_id);
+        emit salePriceUpdated(_id, _newValue);
         return true;
     }
 
@@ -503,7 +504,6 @@ contract VizvaMarket_V1 is
         OnlyItemSellerOrOwner(voucher.marketId)
         IsNotCancelled(voucher.marketId)
     {
-
         //getting seller address from sale data.
         address seller = itemsForSale[voucher.marketId].seller;
 
@@ -517,7 +517,10 @@ contract VizvaMarket_V1 is
         );
 
         // retrieving signer address from EIP-712 voucher and ensuring signature is valid.
-        require(_verifyBid(voucher) == _winner, "Signature invalid or unauthorized");
+        require(
+            _verifyBid(voucher) == _winner,
+            "Signature invalid or unauthorized"
+        );
 
         // checking if the value includes commission.
         require(
@@ -579,7 +582,6 @@ contract VizvaMarket_V1 is
         nonReentrant
         returns (uint256)
     {
-
         //retrieving signer address from EIP-712 voucher and ensuring the signer is authorized to mint NFTs
         require(
             _verifyNFTVoucher(voucher) == creator,
