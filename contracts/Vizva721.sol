@@ -15,9 +15,6 @@ contract Vizva721 is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
 
-    // emitted when NFT minted in a batch
-    event batchNFTMinted(uint256 startIndex, uint256 endIndex);
-
     /**
      * @dev initialize the Marketplace contract.
      * setting msg sender as owner.
