@@ -703,7 +703,7 @@ contract VizvaMarket_V1 is
             _newItemId,
             _tokenData.tokenId,
             _askingPrice,
-            _tokenData.tokenType,
+            _saleType,
             _tokenData.tokenAddress,
             _tokenData.creator
         );
