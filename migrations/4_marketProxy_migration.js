@@ -12,11 +12,9 @@ module.exports = async function (deployer) {
     .__VizvaMarket_init(
       marketConfig._commission,
       web3.utils.toWei(marketConfig._minimumAskingPrice),
-      marketConfig._wallet,
+      marketConfig._wallet
     )
     .encodeABI();
-  await deployer.deploy(adminContract);
-  await deployer.deploy(marketContract);
   await deployer.deploy(
     proxyContract,
     marketContract.address,

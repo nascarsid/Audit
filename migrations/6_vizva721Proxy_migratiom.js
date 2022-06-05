@@ -9,7 +9,6 @@ module.exports = async function (deployer) {
   const data = contract.methods
     .__VizvaToken_init(vizva721Config._name, vizva721Config._symbol)
     .encodeABI();
-  await deployer.deploy(vizva721Contract);
   await deployer.deploy(
     proxyContract,
     vizva721Contract.address,

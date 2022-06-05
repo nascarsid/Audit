@@ -13,8 +13,6 @@ module.exports = async function (deployer) {
       VizvaMarketProxy.address
     )
     .encodeABI();
-  //await deployer.deploy(adminContract);
-  await deployer.deploy(vizvaLazyNFTContract);
   await deployer.deploy(
     proxyContract,
     vizvaLazyNFTContract.address,
