@@ -30,12 +30,12 @@ require("ts-node").register({
   files: true,
 });
 //const testnetMnemonic = process.env.DEVELOPMENT_MNEMONIC
-const mnemonic = process.env.MNEMONIC
-//const infuraRinkeby = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;
-const mumbaiSpeedynode = process.env.SPEEDY_NODE;
 //const ropstenInfura = `https://:${process.env.INFURA_SECRET}@ropsten.infura.io/v3/${process.env.INFURA_ID}`
 //const infura = `https://:${process.env.INFURA_SECRET}@mainnet.infura.io/v3/${process.env.INFURA_ID}`
-
+//const infuraRinkeby = `https://:${process.env.INFURA_SECRET}@rinkeby.infura.io/v3/${process.env.INFURA_ID}`;
+const mnemonic = process.env.MNEMONIC;
+const mumbaiSpeedynode = process.env.MUMBAI_SPEEDY_NODE;
+const polygonMainnetSeed = process.env.MAINNET_SPEEDY_NODE;
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -99,6 +99,13 @@ module.exports = {
       //confirmations: 2,    // # of confs to wait between deployments. (default: 0)
       timeoutBlocks: 500, // # of blocks before a deployment times out  (minimum/default: 50)
       skipDryRun: true, // Skip dry run before migrations? (default: false for public nets )
+    },
+    polygon: {
+      provider: () => new HDWalletProvider(mnemonic, polygonMainnetSeed),
+      network_id: 137,
+      confirmations: 2,
+      production: true,
+      gasPrice: 32000000000,
     },
   },
 
